@@ -7,7 +7,12 @@
 - requests VPN permission through `VpnService.prepare()`,
 - creates the TUN interface with `VpnService.Builder.establish()`,
 - passes the file descriptor to the Go engine bundled in a gomobile AAR,
-- starts the embedded bilingual Web GUI on `127.0.0.1:9050` and shows it in a WebView.
+- starts the embedded bilingual Web GUI on `0.0.0.0:9050` and shows it in a WebView.
+
+The GUI server runs only while the VPN service is active. Before you tap **Start VPN**,
+the app shows a short hint instead of a WebView error page. Once connected you can also
+open the console from a phone browser at `http://<phone-ip>:9050`, or from the PC with
+`adb forward tcp:9050 tcp:9050` and `http://127.0.0.1:9050`.
 
 Build:
 
@@ -31,6 +36,8 @@ with `--subnet 10.66.0.0/24` so the app's `10.66.0.2/24` matches the allocation:
 ```
 
 The app connects to `10.0.2.2:9000` (the host from the emulator's point of view).
+On a real phone, open **Settings** in the app and enter the PC's LAN address, e.g.
+`192.168.2.85:9000`.
 
 ## Testing with the Android CLI
 

@@ -13,4 +13,9 @@
     <string name="name_label">设备名称</string>
     <string name="save">保存</string>
     <string name="saved">设置已保存</string>
+    <string name="status_url">控制台：http://%1$s:9050（或 adb forward tcp:9050）</string>
+    <string name="status_starting">正在启动 DevicePort…</string>
+    <string name="gui_timeout">控制面板启动失败，请检查 VPN 是否已连接。</string>
+    <string name="placeholder_title">点击“启动 VPN”打开控制面板</string>
+    <string name="placeholder_body">VPN 连接建立后，控制面板会在本机提供。点击上方“启动 VPN”即可查看成员、路由和流量状态。</string>
 </resources>

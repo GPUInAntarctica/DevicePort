@@ -17,6 +17,7 @@ public class SettingsActivity extends Activity {
     public static final String KEY_SERVER = "server";
     public static final String KEY_NETWORK = "network";
     public static final String KEY_NAME = "device_name";
+    public static final String KEY_STATUS = "last_status";
 
     private EditText server, network, name;
 

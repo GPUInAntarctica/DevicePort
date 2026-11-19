@@ -13,4 +13,9 @@
     <string name="name_label">Device name</string>
     <string name="save">Save</string>
     <string name="saved">Settings saved</string>
+    <string name="status_url">Console: http://%1$s:9050 (or adb forward tcp:9050)</string>
+    <string name="status_starting">Starting DevicePort…</string>
+    <string name="gui_timeout">Console did not start. Check that the VPN connection is active.</string>
+    <string name="placeholder_title">Tap “Start VPN” to open the console</string>
+    <string name="placeholder_body">The control panel is served locally once the VPN connection is established. Start the VPN above to monitor peers, routes and traffic.</string>
 </resources>

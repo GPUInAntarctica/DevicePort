@@ -78,10 +78,16 @@ public class DevicePortVpnService extends VpnService {
             cfg.put("mtu", 1400);
             engine = Mobile.newEngine(cfg.toString(), tun.getFd());
             engine.start();
-            engine.startGUI("127.0.0.1:9050");
+            // Bind to all interfaces so a browser on the phone (http://<phone-ip>:9050)
+            // and `adb forward tcp:9050 tcp:9050` from a PC can reach the console.
+            engine.startGUI("0.0.0.0:9050");
+            getSharedPreferences(SettingsActivity.PREF, MODE_PRIVATE)
+                    .edit().putString(SettingsActivity.KEY_STATUS, "running").apply();
             Log.i(TAG, "engine started: " + engine.id());
         } catch (Exception e) {
             Log.e(TAG, "engine start failed", e);
+            getSharedPreferences(SettingsActivity.PREF, MODE_PRIVATE)
+                    .edit().putString(SettingsActivity.KEY_STATUS, "error: " + e.getMessage()).apply();
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -120,6 +126,8 @@ public class DevicePortVpnService extends VpnService {
     public void onDestroy() {
         if (engine != null) { engine.close(); engine = null; }
         if (tun != null) { try { tun.close(); } catch (Exception ignored) {} tun = null; }
+        getSharedPreferences(SettingsActivity.PREF, MODE_PRIVATE)
+                .edit().putString(SettingsActivity.KEY_STATUS, "").apply();
         super.onDestroy();
     }
 }
