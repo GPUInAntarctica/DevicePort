@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/GPUInAntarctica/DevicePort/internal/crypto"
+	"github.com/GPUInAntarctica/DevicePort/internal/protocol"
 	"github.com/GPUInAntarctica/DevicePort/internal/server"
 	"github.com/GPUInAntarctica/DevicePort/internal/tun"
 )
@@ -191,6 +193,96 @@ func TestEncryptionRejectsTampering(t *testing.T) {
 	}
 	if _, err := crypto.Open(key, nonce, ct, []byte("bad")); err == nil {
 		t.Fatal("wrong AAD was accepted")
+	}
+}
+
+func TestReplayProtection(t *testing.T) {
+	self, _ := crypto.GenerateIdentity()
+	peer, _ := crypto.GenerateIdentity()
+	dev := tun.NewUserspaceTun("replay", 1400)
+	n, err := New(self, dev, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer n.Close()
+	n.learnPeer(&protocol.PeerInfo{ID: peer.ID(), PublicKey: peer.PublicKey(), IP: "10.66.0.9"})
+
+	key, _ := crypto.SharedKey(self.PrivateKey(), peer.PublicKey())
+	shortID, _ := crypto.ShortID(peer.ID())
+	plain := []byte{protocol.TypeData, 1, 2, 3}
+
+	buildFrame := func(seq uint64) []byte {
+		nonce, _ := crypto.RandomNonce()
+		header := make([]byte, protocol.HeaderSize)
+		header[0], header[1], header[2] = protocol.Magic0, protocol.Magic1, protocol.Version
+		copy(header[4:12], shortID)
+		binary.BigEndian.PutUint64(header[protocol.SeqOffset:protocol.NonceOffset], seq)
+		ct, err := crypto.Seal(key, nonce, plain, header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		frame, err := protocol.BuildFrame(shortID, seq, nonce, ct, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return frame
+	}
+
+	expectData := func(label string) {
+		select {
+		case got := <-dev.Outbound():
+			if !bytes.Equal(got, plain[1:]) {
+				t.Fatalf("%s: bad payload %x", label, got)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("%s: packet was not delivered", label)
+		}
+	}
+	expectDrop := func(label string) {
+		select {
+		case <-dev.Outbound():
+			t.Fatalf("%s: replayed packet was delivered", label)
+		case <-time.After(150 * time.Millisecond):
+		}
+	}
+
+	n.handleFrame(buildFrame(1), nil)
+	expectData("seq 1")
+	n.handleFrame(buildFrame(1), nil)
+	expectDrop("replay of seq 1")
+	n.handleFrame(buildFrame(3), nil)
+	expectData("seq 3")
+	n.handleFrame(buildFrame(2), nil)
+	expectData("late seq 2")
+	n.handleFrame(buildFrame(2), nil)
+	expectDrop("replay of seq 2")
+	n.handleFrame(buildFrame(1000), nil)
+	expectData("seq 1000 (window jump)")
+}
+
+func TestDirectLinkLimit(t *testing.T) {
+	self, _ := crypto.GenerateIdentity()
+	dev := tun.NewUserspaceTun("links", 1400)
+	n, err := New(self, dev, Options{MaxDirect: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer n.Close()
+	for i := 0; i < 6; i++ {
+		peer, _ := crypto.GenerateIdentity()
+		n.learnPeer(&protocol.PeerInfo{ID: peer.ID(), PublicKey: peer.PublicKey(), IP: fmt.Sprintf("10.66.0.%d", i+2)})
+	}
+	n.recomputeLinks()
+	n.mu.Lock()
+	direct := 0
+	for _, p := range n.peers {
+		if !p.relayOnly {
+			direct++
+		}
+	}
+	n.mu.Unlock()
+	if direct != 2 {
+		t.Fatalf("expected 2 direct candidates, got %d", direct)
 	}
 }
 

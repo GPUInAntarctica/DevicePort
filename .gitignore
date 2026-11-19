@@ -31,6 +31,12 @@ local.properties
 dp-*.json
 *.log
 
+# Release assets are intentionally tracked so users can download them directly
+!dist/
+!dist/*.exe
+!dist/*.apk
+!dist/deviceport-*
+
 # Editors / OS
 .idea/
 .vscode/

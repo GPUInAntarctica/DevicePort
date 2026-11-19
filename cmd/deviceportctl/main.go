@@ -5,6 +5,8 @@
 //	deviceportctl status
 //	deviceportctl connect <32-hex-node-id>
 //	deviceportctl send <virtual-ip> "hello"
+//	deviceportctl -admin http://127.0.0.1:9001 networks
+//	deviceportctl -admin http://127.0.0.1:9001 auth <id> on
 package main
 
 import (
@@ -19,7 +21,8 @@ import (
 )
 
 func main() {
-	api := flag.String("api", "http://127.0.0.1:9050", "GUI/API base URL")
+	api := flag.String("api", "http://127.0.0.1:9050", "node GUI/API base URL")
+	admin := flag.String("admin", "http://127.0.0.1:9001", "server admin API base URL")
 	flag.Parse()
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -44,13 +47,63 @@ func main() {
 			fatal(err)
 		}
 		postForm(client, *api+"/api/send", url.Values{"hex": {pkt}})
+	case "networks":
+		getJSON(client, *admin+"/api/networks")
+	case "members":
+		net := "default"
+		if len(args) > 1 {
+			net = args[1]
+		}
+		getJSON(client, *admin+"/api/networks/"+net)
+	case "auth":
+		if len(args) < 3 {
+			usage()
+		}
+		net := "default"
+		id := args[1]
+		allow := args[2]
+		if len(args) > 3 {
+			net, id, allow = args[1], args[2], args[3]
+		}
+		postForm(client, *admin+"/api/networks/"+net+"/auth", url.Values{"id": {id}, "allow": {allow}})
+	case "require-auth":
+		if len(args) < 3 {
+			usage()
+		}
+		postForm(client, *admin+"/api/networks/"+args[1]+"/require-auth", url.Values{"value": {args[2]}})
+	case "route":
+		if len(args) < 4 {
+			usage()
+		}
+		op, net, cidr := args[1], args[2], args[3]
+		if op == "del" || op == "rm" {
+			deleteForm(client, *admin+"/api/networks/"+net+"/routes?cidr="+url.QueryEscape(cidr))
+		} else if op == "add" && len(args) > 4 {
+			postForm(client, *admin+"/api/networks/"+net+"/routes", url.Values{"cidr": {cidr}, "via": {args[4]}})
+		} else {
+			usage()
+		}
 	default:
 		usage()
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: deviceportctl [-api URL] <status|connect <id>|send <ip> <message>>")
+	fmt.Fprintln(os.Stderr, `usage: deviceportctl [options] <command>
+
+node API:
+  status                              show local node status
+  connect <id>                        introduce a peer by node ID
+  send <ip> <message>                 inject an ICMP echo packet
+
+server admin API (-admin URL):
+  networks                            list all networks, members and routes
+  members [network]                   show one network
+  auth <id> <on|off>                  authorize/revoke a member (default network)
+  auth <network> <id> <on|off>        authorize/revoke in a named network
+  require-auth <network> <on|off>     toggle member authorization for a network
+  route add <network> <cidr> <via>    add a managed site-to-site route
+  route del <network> <cidr>          remove a managed route`)
 	os.Exit(2)
 }
 
@@ -79,6 +132,23 @@ func postForm(c *http.Client, u string, v url.Values) {
 		fatal(err)
 	}
 	defer resp.Body.Close()
+	printResponse(resp)
+}
+
+func deleteForm(c *http.Client, u string) {
+	req, err := http.NewRequest(http.MethodDelete, u, nil)
+	if err != nil {
+		fatal(err)
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		fatal(err)
+	}
+	defer resp.Body.Close()
+	printResponse(resp)
+}
+
+func printResponse(resp *http.Response) {
 	var out any
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		fatal(err)

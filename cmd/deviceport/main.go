@@ -1,119 +1,54 @@
-// Command deviceport is the DevicePort client daemon. It creates a virtual
-// network interface, connects to the signaling server over IPv6, establishes
-// encrypted peer-to-peer links with NAT hole punching (relay fallback), and
-// serves a local web GUI for monitoring and control.
+// Command deviceport is the single-file DevicePort executable.
+//
+// Usage:
+//
+//	deviceport server [options]     start signaling + relay + admin server
+//	deviceport node [options]       start the overlay client daemon (default)
+//
+// Running `deviceport` without a subcommand is equivalent to `deviceport node`.
+// Use `deviceport <subcommand> -h` for the full option list.
 package main
 
 import (
-	"flag"
 	"fmt"
-	"log"
-	"net/http"
 	"os"
-	"os/signal"
-	"path/filepath"
-	"syscall"
 
-	"github.com/GPUInAntarctica/DevicePort/internal/api"
-	"github.com/GPUInAntarctica/DevicePort/internal/config"
-	"github.com/GPUInAntarctica/DevicePort/internal/crypto"
-	"github.com/GPUInAntarctica/DevicePort/internal/node"
-	"github.com/GPUInAntarctica/DevicePort/internal/tun"
+	"github.com/GPUInAntarctica/DevicePort/internal/cli"
 )
 
 func main() {
-	cfgPath := flag.String("config", defaultConfigPath(), "configuration file")
-	serverAddr := flag.String("server", "", "override signaling server address")
-	name := flag.String("name", "", "override device name")
-	network := flag.String("network", "", "override network name")
-	tunMode := flag.String("tun", "auto", "TUN mode: auto, linux, wintun, userspace")
-	guiAddr := flag.String("gui", "", "override GUI listen address (empty disables GUI)")
-	connect := flag.String("connect", "", "connect to this peer ID after startup")
-	daemon := flag.Bool("daemon", false, "run without the web GUI")
-	flag.Parse()
-
-	logger := log.New(os.Stderr, "dp: ", log.LstdFlags)
-	cfg, err := config.Load(*cfgPath)
-	if err != nil {
-		logger.Fatalf("load config: %v", err)
+	args := os.Args[1:]
+	if len(args) == 0 {
+		cli.RunNode(nil)
+		return
 	}
-	if *serverAddr != "" {
-		cfg.Server = *serverAddr
+	switch args[0] {
+	case "server", "srv":
+		cli.RunServer(args[1:])
+	case "node", "client":
+		cli.RunNode(args[1:])
+	case "version", "-V", "--version":
+		fmt.Println("DevicePort v0.1.5")
+	case "help", "-h", "--help":
+		usage()
+	default:
+		// Unknown subcommand: treat as node flags for backward compatibility.
+		cli.RunNode(args)
 	}
-	if *name != "" {
-		cfg.Name = *name
-	}
-	if *network != "" {
-		cfg.Network = *network
-	}
-	if *guiAddr != "" {
-		cfg.GUIAddr = *guiAddr
-	}
-
-	priv, err := cfg.PrivateBytes()
-	if err != nil {
-		logger.Fatalf("load identity: %v", err)
-	}
-	ident, err := crypto.FromPrivate(priv)
-	if err != nil {
-		logger.Fatalf("load identity: %v", err)
-	}
-
-	dev, configure, err := openTUN(*tunMode, "dp0", cfg.MTU)
-	if err != nil {
-		logger.Fatalf("open TUN: %v", err)
-	}
-	defer dev.Close()
-
-	n, err := node.New(ident, dev, node.Options{
-		Server:      cfg.Server,
-		Network:     cfg.Network,
-		Name:        cfg.Name,
-		Logger:      logger,
-		AutoConnect: true,
-	})
-	if err != nil {
-		logger.Fatalf("create node: %v", err)
-	}
-	n.OnAddress = configure
-	defer n.Close()
-
-	if err := n.Start(); err != nil {
-		logger.Fatalf("start node: %v", err)
-	}
-	if *connect != "" {
-		if err := n.ConnectPeer(*connect); err != nil {
-			logger.Printf("connect to %s: %v", *connect, err)
-		}
-	}
-
-	if !*daemon && cfg.GUIAddr != "" {
-		srv := &http.Server{Addr: cfg.GUIAddr, Handler: api.New(n).Handler()}
-		go func() {
-			logger.Printf("web GUI at http://%s", cfg.GUIAddr)
-			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				logger.Printf("GUI server: %v", err)
-			}
-		}()
-	}
-
-	logger.Printf("node %s online — virtual IP assigned by %s", ident.ID(), cfg.Server)
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
-	fmt.Println()
-	logger.Println("shutting down")
 }
 
-func defaultConfigPath() string {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return "deviceport.json"
-	}
-	return filepath.Join(dir, "deviceport", "config.json")
-}
+func usage() {
+	fmt.Print(`DevicePort v0.1.5 — IPv6 overlay VPN
 
-// openTUN is implemented per-platform in tun_native_*.go.
-func openTUN(mode, name string, mtu int) (tun.Device, func(ip, prefix string) error, error) {
-	return openNativeTUN(mode, name, mtu)
+Usage:
+  deviceport server [options]   signaling, relay and admin API
+  deviceport node [options]     overlay client + web GUI (default)
+  deviceport version            print version
+
+Quick start:
+  deviceport server --listen '[::]:9000' --subnet 10.66.0.0/24
+  deviceport node   --server '[::1]:9000' --name alice
+
+Run 'deviceport server -h' or 'deviceport node -h' for all options.
+`)
 }

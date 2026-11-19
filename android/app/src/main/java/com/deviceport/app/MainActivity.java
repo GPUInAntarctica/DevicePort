@@ -2,6 +2,7 @@ package com.deviceport.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.view.ViewGroup;
@@ -53,6 +54,13 @@ public class MainActivity extends Activity {
             status.setText(getString(R.string.status_idle));
         });
         buttons.addView(stop);
+
+        Button settings = new Button(this);
+        settings.setText(getString(R.string.settings));
+        settings.setLayoutParams(new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        settings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        buttons.addView(settings);
         root.addView(buttons);
 
         web = new WebView(this);
@@ -79,9 +87,11 @@ public class MainActivity extends Activity {
     }
 
     private void launchService() {
+        SharedPreferences sp = getSharedPreferences(SettingsActivity.PREF, MODE_PRIVATE);
         Intent i = new Intent(this, DevicePortVpnService.class);
-        i.putExtra(DevicePortVpnService.EXTRA_SERVER, "10.0.2.2:9000");
-        i.putExtra(DevicePortVpnService.EXTRA_NETWORK, "default");
+        i.putExtra(DevicePortVpnService.EXTRA_SERVER, sp.getString(SettingsActivity.KEY_SERVER, "10.0.2.2:9000"));
+        i.putExtra(DevicePortVpnService.EXTRA_NETWORK, sp.getString(SettingsActivity.KEY_NETWORK, "default"));
+        i.putExtra(DevicePortVpnService.EXTRA_NAME, sp.getString(SettingsActivity.KEY_NAME, android.os.Build.MODEL));
         startForegroundService(i);
         status.setText(getString(R.string.status_running));
         web.postDelayed(() -> web.loadUrl("http://127.0.0.1:9050/"), 800);

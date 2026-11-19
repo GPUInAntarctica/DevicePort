@@ -15,16 +15,20 @@ import (
 const (
 	Magic0       = 0x44 // 'D'
 	Magic1       = 0x50 // 'P'
-	Version      = 1
-	HeaderSize   = 12 // magic(2) + version(1) + flags(1) + senderShortID(8)
+	Version      = 2
+	HeaderSize   = 20 // magic(2) + version(1) + flags(1) + senderShortID(8) + seq(8)
+	SeqOffset    = 12
 	NonceOffset  = HeaderSize
 	NonceSize    = 12
 	PayloadStart = HeaderSize + NonceSize
 
 	// Packet types carried inside the encrypted payload.
 	TypeData      byte = 1 // payload is a raw IPv4 packet
-	TypePunch     byte = 2 // UDP hole-punching probe / keepalive
-	TypeKeepalive byte = 3
+	TypePunch     byte = 2 // UDP hole-punching probe
+	TypeKeepalive byte = 3 // keepalive with an 8-byte echo token + direction flag
+
+	KeepaliveRequest  byte = 0
+	KeepaliveResponse byte = 1
 
 	FlagNone    byte = 0
 	FlagRelayed byte = 1 // informational: this frame was relayed by the server
@@ -43,8 +47,16 @@ const (
 	MsgRelay    = "relay"
 	MsgPing     = "ping"
 	MsgPong     = "pong"
+	MsgRoutes   = "routes"
 	MsgError    = "error"
 )
+
+// Route is a managed site-to-site route. Traffic for CIDR is forwarded to the
+// member identified by Via, which acts as the gateway to that subnet.
+type Route struct {
+	CIDR string `json:"cidr"`
+	Via  string `json:"via"`
+}
 
 // PeerInfo describes a node as seen by the server / another peer.
 type PeerInfo struct {
@@ -69,10 +81,12 @@ type Message struct {
 	Endpoints []string `json:"endpoints,omitempty"`
 
 	// welcome
-	YourIP  string     `json:"your_ip,omitempty"`
-	Prefix  string     `json:"prefix,omitempty"`
-	RelayOK bool       `json:"relay_ok,omitempty"`
-	Peers   []PeerInfo `json:"peers,omitempty"`
+	YourIP     string     `json:"your_ip,omitempty"`
+	Prefix     string     `json:"prefix,omitempty"`
+	RelayOK    bool       `json:"relay_ok,omitempty"`
+	Authorized bool       `json:"authorized,omitempty"`
+	Peers      []PeerInfo `json:"peers,omitempty"`
+	Routes     []Route    `json:"routes,omitempty"`
 
 	// peer / peer_left / connect / relay
 	Peer   *PeerInfo `json:"peer,omitempty"`
@@ -125,8 +139,9 @@ func ReadMessage(r io.Reader) (*Message, error) {
 }
 
 // BuildFrame constructs a data-plane frame from its parts. nonce must be 12
-// bytes; the returned slice owns its own copy of all inputs.
-func BuildFrame(senderShortID []byte, nonce, ciphertext []byte, relayed bool) ([]byte, error) {
+// bytes and senderShortID 8 bytes. seq is the sender's monotonic packet number;
+// it is covered by the AEAD additional data and used for replay protection.
+func BuildFrame(senderShortID []byte, seq uint64, nonce, ciphertext []byte, relayed bool) ([]byte, error) {
 	if len(senderShortID) != 8 {
 		return nil, errors.New("sender id must be 8 bytes")
 	}
@@ -141,6 +156,7 @@ func BuildFrame(senderShortID []byte, nonce, ciphertext []byte, relayed bool) ([
 		frame[3] = FlagRelayed
 	}
 	copy(frame[4:12], senderShortID)
+	binary.BigEndian.PutUint64(frame[SeqOffset:NonceOffset], seq)
 	copy(frame[NonceOffset:PayloadStart], nonce)
 	copy(frame[PayloadStart:], ciphertext)
 	return frame, nil
@@ -158,15 +174,16 @@ func AAD(frame []byte) ([]byte, error) {
 }
 
 // ParseFrame validates the header and splits a frame into its components.
-func ParseFrame(frame []byte) (shortID, nonce, ciphertext []byte, relayed bool, err error) {
+func ParseFrame(frame []byte) (shortID, nonce, ciphertext []byte, seq uint64, relayed bool, err error) {
 	if len(frame) < PayloadStart {
-		return nil, nil, nil, false, errors.New("frame too short")
+		return nil, nil, nil, 0, false, errors.New("frame too short")
 	}
 	if frame[0] != Magic0 || frame[1] != Magic1 || frame[2] != Version {
-		return nil, nil, nil, false, errors.New("bad frame magic/version")
+		return nil, nil, nil, 0, false, errors.New("bad frame magic/version")
 	}
 	relayed = frame[3]&FlagRelayed != 0
-	return frame[4:12], frame[NonceOffset:PayloadStart], frame[PayloadStart:], relayed, nil
+	seq = binary.BigEndian.Uint64(frame[SeqOffset:NonceOffset])
+	return frame[4:12], frame[NonceOffset:PayloadStart], frame[PayloadStart:], seq, relayed, nil
 }
 
 // EncodeEndpoint normalizes a host:port string into a canonical IPv6 endpoint.

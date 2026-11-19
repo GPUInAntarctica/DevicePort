@@ -4,11 +4,15 @@
 package node
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,6 +30,9 @@ const (
 	directTimeout     = 60 * time.Second
 	controlPing       = 20 * time.Second
 	bufferSize        = 65535
+	onlineTimeout     = 15 * time.Second
+	defaultMaxDirect  = 4
+	replayWindowBits  = 64
 )
 
 // Options configures a Node.
@@ -34,9 +41,12 @@ type Options struct {
 	Network string
 	Name    string
 	Logger  *log.Logger
-	// AutoConnect causes every discovered peer in the network to be punched
-	// automatically (the default virtual-LAN behavior).
+	// AutoConnect causes discovered peers to be linked automatically.
 	AutoConnect bool
+	// MaxDirect caps how many peers this node will punch directly. Remaining
+	// peers are reachable through the server relay. 0 means unlimited (full
+	// mesh); the default is a small number to avoid O(n²) punch traffic.
+	MaxDirect int
 }
 
 // Peer holds the runtime state of one remote node.
@@ -46,38 +56,65 @@ type Peer struct {
 	Endpoints []string
 
 	direct     bool
+	relayOnly  bool
 	activeEP   string
 	punchUntil time.Time
 	lastTry    time.Time
 	lastSeen   time.Time
 	tx, rx     uint64
+	dropped    uint64
+
+	// monotonic send sequence and a 64-bit sliding receive window
+	txSeq        uint64
+	replayHigh   uint64
+	replayBitmap uint64
+	rtt          time.Duration
+}
+
+// route is a managed route pushed by the server: traffic for CIDR is sent to
+// the peer with ID Via, which acts as the gateway to that subnet.
+type route struct {
+	cidr  *net.IPNet
+	viaID string
+}
+
+// RouteStatus is a managed route as reported to the GUI.
+type RouteStatus struct {
+	CIDR string `json:"cidr"`
+	Via  string `json:"via"`
 }
 
 // PeerStatus is a snapshot for the GUI/CLI.
 type PeerStatus struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	IP       string    `json:"ip"`
-	Direct   bool      `json:"direct"`
-	Endpoint string    `json:"endpoint"`
-	Mode     string    `json:"mode"`
-	TX       uint64    `json:"tx"`
-	RX       uint64    `json:"rx"`
-	LastSeen time.Time `json:"last_seen"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	IP        string    `json:"ip"`
+	Direct    bool      `json:"direct"`
+	RelayOnly bool      `json:"relay_only"`
+	Online    bool      `json:"online"`
+	Endpoint  string    `json:"endpoint"`
+	Mode      string    `json:"mode"`
+	TX        uint64    `json:"tx"`
+	RX        uint64    `json:"rx"`
+	Dropped   uint64    `json:"dropped"`
+	RTTMs     float64   `json:"rtt_ms"`
+	LastSeen  time.Time `json:"last_seen"`
 }
 
 // Status is a snapshot of the whole node for the GUI/CLI.
 type Status struct {
-	ID         string       `json:"id"`
-	Name       string       `json:"name"`
-	IP         string       `json:"ip"`
-	Prefix     string       `json:"prefix"`
-	Network    string       `json:"network"`
-	Server     string       `json:"server"`
-	UDPAddr    string       `json:"udp_addr"`
-	Encryption string       `json:"encryption"`
-	Uptime     string       `json:"uptime"`
-	Peers      []PeerStatus `json:"peers"`
+	ID         string        `json:"id"`
+	Name       string        `json:"name"`
+	IP         string        `json:"ip"`
+	Prefix     string        `json:"prefix"`
+	Network    string        `json:"network"`
+	Server     string        `json:"server"`
+	UDPAddr    string        `json:"udp_addr"`
+	Encryption string        `json:"encryption"`
+	Authorized bool          `json:"authorized"`
+	Routes     []RouteStatus `json:"routes"`
+	Uptime     string        `json:"uptime"`
+	Peers      []PeerStatus  `json:"peers"`
 }
 
 // Node is a DevicePort client instance.
@@ -91,13 +128,18 @@ type Node struct {
 	control   net.Conn
 	controlMu sync.Mutex
 
-	mu        sync.Mutex
-	peers     map[string]*Peer
-	byIP      map[string]*Peer
-	byShortID map[string]*Peer
-	selfIP    string
-	prefix    string
-	started   time.Time
+	mu         sync.Mutex
+	peers      map[string]*Peer
+	byIP       map[string]*Peer
+	byShortID  map[string]*Peer
+	routes     []route
+	authorized bool
+	selfIP     string
+	prefix     string
+	started    time.Time
+
+	// pending keepalive tokens used for RTT measurement without clock sync
+	pings map[uint64]time.Time
 
 	closed   chan struct{}
 	closeOne sync.Once
@@ -126,6 +168,12 @@ func New(ident *crypto.Identity, dev tun.Device, opts Options) (*Node, error) {
 	if opts.Name == "" {
 		opts.Name = "device"
 	}
+	if opts.MaxDirect == 0 {
+		opts.MaxDirect = defaultMaxDirect
+	}
+	if opts.MaxDirect < 0 {
+		opts.MaxDirect = 0 // 0 means unlimited (full mesh)
+	}
 	udp, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv6zero, Port: 0})
 	if err != nil {
 		// Fall back to IPv4 wildcard on hosts without IPv6.
@@ -143,6 +191,7 @@ func New(ident *crypto.Identity, dev tun.Device, opts Options) (*Node, error) {
 		peers:     make(map[string]*Peer),
 		byIP:      make(map[string]*Peer),
 		byShortID: make(map[string]*Peer),
+		pings:     make(map[uint64]time.Time),
 		closed:    make(chan struct{}),
 		started:   time.Now(),
 	}, nil
@@ -253,8 +302,9 @@ func (n *Node) controlLoop() {
 			n.mu.Lock()
 			n.selfIP = m.YourIP
 			n.prefix = m.Prefix
+			n.authorized = m.Authorized
 			n.mu.Unlock()
-			n.logger.Printf("assigned virtual IP %s (%s)", m.YourIP, m.Prefix)
+			n.logger.Printf("assigned virtual IP %s (%s) authorized=%v", m.YourIP, m.Prefix, m.Authorized)
 			if n.OnAddress != nil {
 				if err := n.OnAddress(m.YourIP, m.Prefix); err != nil {
 					n.logger.Printf("configure tun address: %v", err)
@@ -263,14 +313,21 @@ func (n *Node) controlLoop() {
 			for i := range m.Peers {
 				n.learnPeer(&m.Peers[i])
 			}
+			n.setRoutes(m.Routes)
+			n.recomputeLinks()
+			n.notify()
+		case protocol.MsgRoutes:
+			n.setRoutes(m.Routes)
 			n.notify()
 		case protocol.MsgPeer:
 			if m.Peer != nil {
 				n.learnPeer(m.Peer)
+				n.recomputeLinks()
 				n.notify()
 			}
 		case protocol.MsgPeerLeft:
 			n.forgetPeer(m.ID)
+			n.recomputeLinks()
 			n.notify()
 		case protocol.MsgRelay:
 			n.handleFrame(m.Data, nil)
@@ -327,6 +384,59 @@ func (n *Node) learnPeer(info *protocol.PeerInfo) {
 	n.logger.Printf("peer %s (%s) at %s, %d endpoint(s)", short(info.ID), info.Name, info.IP, len(info.Endpoints))
 }
 
+// setRoutes parses managed routes pushed by the server. Invalid CIDRs are
+// ignored so a bad admin entry cannot break the data plane.
+func (n *Node) setRoutes(rs []protocol.Route) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.routes = nil
+	for _, r := range rs {
+		_, cidr, err := net.ParseCIDR(r.CIDR)
+		if err != nil {
+			n.logger.Printf("invalid managed route %q: %v", r.CIDR, err)
+			continue
+		}
+		n.routes = append(n.routes, route{cidr: cidr, viaID: r.Via})
+	}
+}
+
+// recomputeLinks limits the number of direct links to MaxDirect. Peers are
+// ranked by XOR distance from our own ID, which keeps the choice stable and
+// roughly symmetric; the rest are reached through the relay. This prevents the
+// O(n²) punch traffic of a full mesh.
+func (n *Node) recomputeLinks() {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	self, _ := hex.DecodeString(n.ident.ID())
+	type candidate struct {
+		id   string
+		dist uint64
+	}
+	var ids []candidate
+	for id := range n.peers {
+		b, err := hex.DecodeString(id)
+		if err != nil || len(b) < 8 || len(self) < 8 {
+			continue
+		}
+		ids = append(ids, candidate{id, binary.BigEndian.Uint64(b[:8]) ^ binary.BigEndian.Uint64(self[:8])})
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].dist < ids[j].dist })
+	selected := make(map[string]bool)
+	for i, c := range ids {
+		if n.opts.MaxDirect > 0 && i >= n.opts.MaxDirect {
+			break
+		}
+		selected[c.id] = true
+	}
+	for id, p := range n.peers {
+		p.relayOnly = !selected[id]
+		if p.relayOnly && p.direct {
+			p.direct = false
+			p.activeEP = ""
+		}
+	}
+}
+
 func (n *Node) forgetPeer(id string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -362,7 +472,7 @@ func (n *Node) udpLoop() {
 // handleFrame authenticates, decrypts and dispatches one data-plane frame.
 // src is the observed UDP source address; it is nil for relayed frames.
 func (n *Node) handleFrame(frame []byte, src *net.UDPAddr) {
-	shortID, nonce, ciphertext, frameRelayed, err := protocol.ParseFrame(frame)
+	shortID, nonce, ciphertext, seq, frameRelayed, err := protocol.ParseFrame(frame)
 	if err != nil {
 		return
 	}
@@ -386,15 +496,20 @@ func (n *Node) handleFrame(frame []byte, src *net.UDPAddr) {
 		return
 	}
 
-	atomic.AddUint64(&p.rx, 1)
 	n.mu.Lock()
+	if !acceptSeq(p, seq) {
+		p.dropped++
+		n.mu.Unlock()
+		return // replayed or out-of-window packet
+	}
 	p.lastSeen = time.Now()
-	if src != nil && !frameRelayed {
-		// Any valid direct packet confirms the path.
+	if src != nil && !frameRelayed && !p.relayOnly {
+		// A valid direct packet confirms the path.
 		p.activeEP = src.String()
 		p.direct = true
 	}
 	n.mu.Unlock()
+	atomic.AddUint64(&p.rx, 1)
 
 	switch plain[0] {
 	case protocol.TypeData:
@@ -404,9 +519,7 @@ func (n *Node) handleFrame(frame []byte, src *net.UDPAddr) {
 			}
 		}
 	case protocol.TypePunch:
-		// A direct punch proves bidirectional reachability and stops the
-		// burst. Relayed punches do not count as a direct path.
-		if src != nil && !frameRelayed {
+		if src != nil && !frameRelayed && !p.relayOnly {
 			n.mu.Lock()
 			p.activeEP = src.String()
 			p.direct = true
@@ -415,8 +528,52 @@ func (n *Node) handleFrame(frame []byte, src *net.UDPAddr) {
 			n.notify()
 		}
 	case protocol.TypeKeepalive:
-		// no-op: lastSeen already updated
+		if len(plain) < 10 {
+			return
+		}
+		token := binary.BigEndian.Uint64(plain[1:9])
+		switch plain[9] {
+		case protocol.KeepaliveRequest:
+			// Echo the token back; the initiator measures RTT locally.
+			_ = n.sendKeepalive(p, token, protocol.KeepaliveResponse)
+		case protocol.KeepaliveResponse:
+			n.mu.Lock()
+			sent, ok := n.pings[token]
+			if ok {
+				p.rtt = time.Since(sent)
+				delete(n.pings, token)
+			}
+			n.mu.Unlock()
+		}
 	}
+}
+
+// acceptSeq implements a 64-bit sliding replay window. It must be called with
+// n.mu held. Sequence numbers start at 1; 0 is treated as "nothing received".
+func acceptSeq(p *Peer, seq uint64) bool {
+	if seq == 0 {
+		return false
+	}
+	if seq > p.replayHigh {
+		if delta := seq - p.replayHigh; delta >= replayWindowBits {
+			p.replayBitmap = 0
+		} else {
+			p.replayBitmap <<= delta
+		}
+		p.replayHigh = seq
+		p.replayBitmap |= 1 // bit 0 = highest sequence, marked as seen
+		return true
+	}
+	delta := p.replayHigh - seq
+	if delta >= replayWindowBits {
+		return false
+	}
+	bit := uint64(1) << delta
+	if p.replayBitmap&bit != 0 {
+		return false
+	}
+	p.replayBitmap |= bit
+	return true
 }
 
 // tunLoop reads raw IPv4 packets from the virtual interface and forwards them
@@ -440,12 +597,22 @@ func (n *Node) tunLoop() {
 		if pkt[0]>>4 != 4 {
 			continue
 		}
-		dst := net.IPv4(pkt[16], pkt[17], pkt[18], pkt[19]).String()
+		dstIP := net.IPv4(pkt[16], pkt[17], pkt[18], pkt[19])
+		dst := dstIP.String()
 		n.mu.Lock()
 		p := n.byIP[dst]
+		if p == nil {
+			// Managed site-to-site route: forward to the gateway member.
+			for _, r := range n.routes {
+				if r.cidr.Contains(dstIP) {
+					p = n.peers[r.viaID]
+					break
+				}
+			}
+		}
 		n.mu.Unlock()
 		if p == nil {
-			continue // not a peer address, leave to the local stack
+			continue // not a peer or managed route, leave to the local stack
 		}
 		if err := n.sendToPeer(p, protocol.TypeData, pkt); err != nil {
 			n.logger.Printf("send to %s: %v", short(p.Info.ID), err)
@@ -457,7 +624,7 @@ func (n *Node) tunLoop() {
 // if no direct path is established, through the server's relay.
 func (n *Node) sendToPeer(p *Peer, typ byte, payload []byte) error {
 	n.mu.Lock()
-	direct := p.direct && p.activeEP != ""
+	direct := p.direct && p.activeEP != "" && !p.relayOnly
 	ep := p.activeEP
 	n.mu.Unlock()
 	if direct {
@@ -485,6 +652,7 @@ func (n *Node) sendFrame(p *Peer, typ byte, payload []byte, ep string, relayed b
 	if err != nil {
 		return err
 	}
+	seq := atomic.AddUint64(&p.txSeq, 1)
 
 	// Build the header first; it is the GCM additional authenticated data.
 	flags := byte(0)
@@ -494,12 +662,13 @@ func (n *Node) sendFrame(p *Peer, typ byte, payload []byte, ep string, relayed b
 	header := make([]byte, protocol.HeaderSize)
 	header[0], header[1], header[2], header[3] = protocol.Magic0, protocol.Magic1, protocol.Version, flags
 	copy(header[4:12], sid)
+	binary.BigEndian.PutUint64(header[protocol.SeqOffset:protocol.NonceOffset], seq)
 
 	ct, err := crypto.Seal(p.Key, nonce, plain, header)
 	if err != nil {
 		return err
 	}
-	frame, err := protocol.BuildFrame(sid, nonce, ct, relayed)
+	frame, err := protocol.BuildFrame(sid, seq, nonce, ct, relayed)
 	if err != nil {
 		return err
 	}
@@ -521,6 +690,35 @@ func (n *Node) sendFrame(p *Peer, typ byte, payload []byte, ep string, relayed b
 		To:   p.Info.ID,
 		Data: frame,
 	})
+}
+
+// sendKeepalive sends a keepalive carrying an 8-byte echo token. Requests are
+// answered by the peer with the same token so RTT can be measured locally.
+func (n *Node) sendKeepalive(p *Peer, token uint64, dir byte) error {
+	payload := make([]byte, 9)
+	binary.BigEndian.PutUint64(payload[:8], token)
+	payload[8] = dir
+	n.mu.Lock()
+	direct := p.direct && p.activeEP != "" && !p.relayOnly
+	ep := p.activeEP
+	n.mu.Unlock()
+	if dir == protocol.KeepaliveRequest {
+		n.mu.Lock()
+		n.pings[token] = time.Now()
+		// Bound the pending map in case responses are lost.
+		if len(n.pings) > 256 {
+			for k, t := range n.pings {
+				if time.Since(t) > 30*time.Second {
+					delete(n.pings, k)
+				}
+			}
+		}
+		n.mu.Unlock()
+	}
+	if direct {
+		return n.sendFrame(p, protocol.TypeKeepalive, payload, ep, false)
+	}
+	return n.sendFrame(p, protocol.TypeKeepalive, payload, "", true)
 }
 
 // ---------------------------------------------------------------- maintenance
@@ -562,7 +760,14 @@ func (n *Node) sendKeepalives() {
 	}
 	n.mu.Unlock()
 	for _, p := range peers {
-		_ = n.sendToPeer(p, protocol.TypeKeepalive, nil)
+		var token uint64
+		var b [8]byte
+		if _, err := io.ReadFull(rand.Reader, b[:]); err == nil {
+			token = binary.BigEndian.Uint64(b[:])
+		} else {
+			token = uint64(time.Now().UnixNano())
+		}
+		_ = n.sendKeepalive(p, token, protocol.KeepaliveRequest)
 	}
 }
 
@@ -575,7 +780,7 @@ func (n *Node) doPunch() {
 	}
 	var targets []punchTarget
 	for _, p := range n.peers {
-		if p.direct {
+		if p.direct || p.relayOnly {
 			continue
 		}
 		if now.After(p.punchUntil) {
@@ -610,9 +815,13 @@ func (n *Node) Status() Status {
 		Server:     n.opts.Server,
 		UDPAddr:    n.udp.LocalAddr().String(),
 		Encryption: "X25519 + HKDF-SHA256 + AES-256-GCM",
+		Authorized: n.authorized,
 	}
 	if n.running.Load() {
 		s.Uptime = time.Since(n.started).Truncate(time.Second).String()
+	}
+	for _, r := range n.routes {
+		s.Routes = append(s.Routes, RouteStatus{CIDR: r.cidr.String(), Via: r.viaID})
 	}
 	for _, p := range n.peers {
 		mode := "relay"
@@ -621,8 +830,11 @@ func (n *Node) Status() Status {
 		}
 		s.Peers = append(s.Peers, PeerStatus{
 			ID: p.Info.ID, Name: p.Info.Name, IP: p.Info.IP,
-			Direct: p.direct, Endpoint: p.activeEP, Mode: mode,
+			Direct: p.direct, RelayOnly: p.relayOnly,
+			Online:   time.Since(p.lastSeen) < onlineTimeout,
+			Endpoint: p.activeEP, Mode: mode,
 			TX: atomic.LoadUint64(&p.tx), RX: atomic.LoadUint64(&p.rx),
+			Dropped: p.dropped, RTTMs: float64(p.rtt.Microseconds()) / 1000.0,
 			LastSeen: p.lastSeen,
 		})
 	}

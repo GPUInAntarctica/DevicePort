@@ -1,6 +1,6 @@
 {
   "name": "deviceport-desktop",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "description": "DevicePort desktop application (Electron wrapper around the Go daemon and its Web GUI)",
   "main": "main.js",
   "author": "DevicePort contributors",

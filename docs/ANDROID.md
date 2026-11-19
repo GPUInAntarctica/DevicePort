@@ -16,8 +16,8 @@ Build:
 export ANDROID_HOME=$HOME/Android/Sdk
 export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018
 bash android/build.sh
-# => bin/DevicePort-v0.1.apk
-adb install -r bin/DevicePort-v0.1.apk
+# => bin/DevicePort-v0.1.5.apk
+adb install -r bin/DevicePort-v0.1.5.apk
 ```
 
 The build script uses a gomobile AAR (build it with `gomobile bind -androidapi 35
@@ -27,7 +27,7 @@ Because `VpnService` must know the local address before connecting, start the se
 with `--subnet 10.66.0.0/24` so the app's `10.66.0.2/24` matches the allocation:
 
 ```bash
-./bin/deviceport-server --listen '[::]:9000' --subnet 10.66.0.0/24
+./dist/deviceport-linux-amd64 server --listen '[::]:9000' --subnet 10.66.0.0/24
 ```
 
 The app connects to `10.0.2.2:9000` (the host from the emulator's point of view).
@@ -37,7 +37,7 @@ The app connects to `10.0.2.2:9000` (the host from the emulator's point of view)
 ```bash
 android emulator create medium_phone
 android emulator start --headless medium_phone
-adb install -r bin/DevicePort-v0.1.apk
+adb install -r bin/DevicePort-v0.1.5.apk
 adb shell am start -n com.deviceport.app/.MainActivity
 ```
 

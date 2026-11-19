@@ -5,7 +5,7 @@
 ## Run in development
 
 ```bash
-make build                 # produce bin/deviceport + bin/deviceport-server
+make build                 # produce the single executable in dist/ and bin/
 cd desktop
 npm install
 npm run start

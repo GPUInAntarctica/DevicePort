@@ -9,7 +9,7 @@ The Windows client uses [Wintun](https://www.wintun.net/) for its TUN adapter.
 3. Run the client:
 
 ```powershell
-deviceport-server.exe --listen "[::]:9000"
+deviceport-windows-amd64.exe server --listen "[::]:9000"
 deviceport.exe --server "[::1]:9000" --name alice --tun wintun
 ```
 
@@ -26,9 +26,9 @@ exchange, hole punching, relay, encryption, HTTP API and bilingual GUI all work.
 
 ```bash
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml="
-wine bin/deviceport-server.exe --listen '[::1]:9000'
-wine bin/deviceport.exe --server '[::1]:9000' --name wine1 --gui 127.0.0.1:9050
-wine bin/deviceport.exe --server '[::1]:9000' --name wine2 --gui 127.0.0.1:9051
+wine dist/deviceport-windows-amd64.exe server --listen '[::1]:9000'
+wine dist/deviceport-windows-amd64.exe node --server '[::1]:9000' --name wine1 --gui 127.0.0.1:9050
+wine dist/deviceport-windows-amd64.exe node --server '[::1]:9000' --name wine2 --gui 127.0.0.1:9051
 curl -s http://127.0.0.1:9050/api/status | python3 -m json.tool
 ```
 

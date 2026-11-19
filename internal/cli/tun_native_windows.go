@@ -1,10 +1,9 @@
-//go:build linux
+//go:build windows
 
-package main
+package cli
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/GPUInAntarctica/DevicePort/internal/tun"
 )
@@ -16,22 +15,18 @@ func openNativeTUN(mode, name string, mtu int) (tun.Device, func(string, string)
 	switch mode {
 	case "userspace":
 		return userspace()
-	case "linux", "auto":
-		d, err := tun.NewLinuxTun(name, mtu)
+	case "wintun", "auto":
+		d, err := tun.NewWintunTun(name, mtu)
 		if err == nil {
 			configure := func(ip, prefix string) error {
-				bits := "24"
-				if _, p, ok := strings.Cut(prefix, "/"); ok {
-					bits = p
-				}
-				return d.SetAddress(ip + "/" + bits)
+				return d.SetAddress(ip + "/24")
 			}
 			return d, configure, nil
 		}
-		if mode == "linux" {
+		if mode == "wintun" {
 			return nil, nil, err
 		}
-		fmt.Printf("native TUN unavailable (%v) — falling back to userspace mode\n", err)
+		fmt.Printf("Wintun unavailable (%v) — falling back to userspace mode\n", err)
 		return userspace()
 	default:
 		return nil, nil, fmt.Errorf("unknown TUN mode %q", mode)

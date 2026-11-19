@@ -7,4 +7,10 @@
     <string name="status_running">DevicePort 正在运行 — 控制面板如下图所示。</string>
     <string name="vpn_denied">VPN 权限被拒绝。</string>
     <string name="vpn_started">DevicePort VPN 已启动</string>
+    <string name="settings">设置</string>
+    <string name="server_label">信令服务器（地址:端口）</string>
+    <string name="network_label">网络名称</string>
+    <string name="name_label">设备名称</string>
+    <string name="save">保存</string>
+    <string name="saved">设置已保存</string>
 </resources>

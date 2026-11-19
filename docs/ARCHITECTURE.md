@@ -19,10 +19,10 @@ DevicePort 分为三层：控制面（节点到服务器的 TCP 连接）、数�
 
 | Package | Responsibility |
 |---------|----------------|
-| `cmd/deviceport-server` | IP allocation, peer registry, introductions, blind relay |
-| `internal/server` | server state machine, per-client write locks, stale-peer reaping |
-| `cmd/deviceport` | daemon entry point, platform TUN selection, GUI server |
-| `internal/node` | peer state, punch loops, keepalives, encryption, TUN routing |
+| `cmd/deviceport` | single executable; dispatches `server` / `node` subcommands |
+| `internal/cli` | subcommand implementations and platform TUN selection |
+| `internal/server` | IP allocation, authorization, managed routes, introductions, blind relay, admin API |
+| `internal/node` | peer state, bounded punch loops, replay window, RTT keepalives, encryption, TUN + route forwarding |
 | `internal/crypto` | X25519 identity, ECDH + HKDF, AES-256-GCM, random nonces |
 | `internal/protocol` | control envelopes and binary frame layout |
 | `internal/tun` | `Device` interface; Linux, Wintun, FD (Android), userspace implementations |
@@ -33,10 +33,13 @@ DevicePort 分为三层：控制面（节点到服务器的 TCP 连接）、数�
 
 1. Node connects to the server, sends `hello` with its public key, UDP port and
    discovered IPv6 endpoints.
-2. Server assigns an IPv4 address and replies with `welcome` (including known peers).
-   The server also tells existing peers about the newcomer.
+2. Server assigns a stable IPv4 address and replies with `welcome`. If the network
+   requires authorization, the node is held in a pending state: it sees no peers and
+   displays an "awaiting authorization" banner until an admin approves it.
 3. For every learned peer, both nodes derive the same symmetric key (X25519 ECDH +
-   HKDF) and begin sending UDP punch packets to each other's endpoints every 200 ms.
+   HKDF). Only the closest `--max-direct` peers (XOR distance, default 4) are punched;
+   the rest communicate via the relay. This avoids O(n²) punch traffic.
+   Managed routes from the server are installed and matched by destination IP.
 4. The first valid direct packet from a peer installs the direct path (`activeEP`).
    Data packets then flow peer-to-peer.
 5. If no direct packet arrives within the punch burst, data is sent via the server's
@@ -53,5 +56,5 @@ DevicePort 分为三层：控制面（节点到服务器的 TCP 连接）、数�
 - Peer identity is the fingerprint of the X25519 public key, so the server cannot
   impersonate a peer without detection (out-of-band ID verification is recommended).
 - Known limitations: no forward secrecy (static keys), no replay protection, no
-  global key revocation. These are acceptable for v0.1 but must be addressed before
+  global key revocation. These are acceptable for v0.1.5 but must be addressed before
   production use.

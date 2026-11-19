@@ -60,7 +60,7 @@
   .fact .v.blue{color:var(--blue)}
 
   .tbl-wrap{overflow-x:auto}
-  table{width:100%;border-collapse:collapse;min-width:620px}
+  table{width:100%;border-collapse:collapse;min-width:760px}
   thead th{background:var(--panel2);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:600}
   tbody td{padding:12px 14px;border-bottom:1px solid var(--soft);font-size:12px;vertical-align:middle;white-space:nowrap}
   tbody tr:last-child td{border-bottom:0}
@@ -89,6 +89,13 @@
   button.primary:hover{background:var(--blue-h)}
   .note{margin-top:12px;font-size:10.5px;color:var(--dim);font-family:var(--mono)}
   #msg{min-height:15px;margin-top:10px;font-size:11.5px;color:var(--green)}
+  .banner{display:none;margin:0 0 16px;padding:12px 16px;background:rgba(224,168,76,.08);border:1px solid rgba(224,168,76,.35);border-left:3px solid var(--amber);border-radius:2px;color:var(--amber);font-size:12px}
+  .banner.show{display:block}
+  .routes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font:11px var(--mono);color:var(--mut)}
+  .routes .r{border:1px solid var(--line);border-radius:2px;padding:4px 8px;background:var(--panel2)}
+  .routes .r b{color:var(--blue);font-weight:400}
+  .sub{display:block;font:10px var(--mono);color:var(--dim);margin-top:2px}
+  .rtt{font-family:var(--mono);font-size:11.5px;color:var(--mut)}
   footer{padding:20px 24px 30px;color:var(--dim);font:10.5px var(--mono);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   @media(max-width:640px){.side{display:none}.main{margin-left:0}.facts{grid-template-columns:repeat(2,1fr)}.ops{grid-template-columns:1fr}}
 </style>
@@ -96,7 +103,7 @@
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand"><div class="logo"><i>DP</i></div><div><b>DevicePort</b><small>v0.1</small></div></div>
+    <div class="brand"><div class="logo"><i>DP</i></div><div><b>DevicePort</b><small>v0.1.5</small></div></div>
     <nav>
       <a><span class="ic"></span><span data-i18n="nav_overview">Overview</span></a>
       <a class="on"><span class="ic"></span><span data-i18n="nav_net">Networks</span></a>
@@ -116,6 +123,8 @@
     </div>
 
     <div class="content">
+      <div id="authbanner" class="banner" data-i18n="auth_wait">This member is awaiting authorization. Ask the network administrator to approve your node ID.</div>
+
       <div class="sec"><h2 data-i18n="sec_net">Network</h2><span class="badge" data-i18n="managed">MANAGED</span><span class="rule"></span></div>
       <div class="card facts">
         <div class="fact"><label data-i18n="f_netid">Network ID</label><div class="v blue" id="netid">—</div></div>
@@ -123,14 +132,16 @@
         <div class="fact"><label data-i18n="f_addr">My address</label><div class="v" id="ip">—</div></div>
         <div class="fact"><label data-i18n="f_server">Controller</label><div class="v" id="srv">—</div></div>
       </div>
+      <div id="routes" class="routes"></div>
 
       <div class="sec mt"><h2 data-i18n="sec_members">Members</h2><span class="badge" id="pcount">0</span><span class="rule"></span></div>
       <div class="card tbl-wrap">
         <table>
           <thead><tr>
             <th data-i18n="th_name">Name</th><th data-i18n="th_id">ID</th><th data-i18n="th_ip">IP</th>
-            <th data-i18n="th_state">Status</th><th data-i18n="th_ep">Physical address</th>
-            <th data-i18n="th_path">Path</th><th data-i18n="th_io">Tx / Rx</th><th></th>
+            <th data-i18n="th_state">Status</th><th data-i18n="th_path">Path</th>
+            <th data-i18n="th_rtt">RTT</th><th data-i18n="th_seen">Last seen</th>
+            <th data-i18n="th_io">Tx / Rx</th><th></th>
           </tr></thead>
           <tbody id="peers"></tbody>
         </table>
@@ -158,7 +169,7 @@
       <div id="msg"></div>
     </div>
     <footer>
-      <span>DEVICEPORT v0.1 · X25519 / HKDF-SHA256 / AES-256-GCM</span>
+      <span>DEVICEPORT v0.1.5 · X25519 / HKDF-SHA256 / AES-256-GCM</span>
       <span data-i18n="footer">IPv6 UNDERLAY · VIRTUAL IPv4</span>
     </footer>
   </div>
@@ -170,6 +181,8 @@ const I18N={
   nav_overview:"Overview",nav_net:"Networks",nav_members:"Members",nav_settings:"Settings",crumb:"Networks",
   live:"ONLINE",sec_net:"Network",managed:"MANAGED",f_netid:"Network ID",f_subnet:"IPv4 subnet",f_addr:"My address",f_server:"Controller",
   sec_members:"Members",th_name:"Name",th_id:"ID",th_ip:"IP",th_state:"Status",th_ep:"Physical address",th_path:"Path",th_io:"Tx / Rx",
+  th_rtt:"RTT",th_seen:"Last seen",online:"online",offline:"offline",ago:"ago",never:"never",routes:"Managed routes",
+  auth_wait:"This member is awaiting authorization. Ask the network administrator to approve your node ID.",
   sec_ops:"Operations",connect:"Add member by ID",connect_hint:"Introduce another node manually. Members on the same network are normally added automatically.",
   cidph:"Node ID",btn_connect:"Connect",connect_note:"Authenticated with your X25519 identity",
   sendtitle:"Diagnostic · ICMP echo",send_hint:"Inject a raw IPv4 packet into the overlay and route it to a member.",
@@ -181,6 +194,8 @@ const I18N={
   nav_overview:"概览",nav_net:"网络",nav_members:"成员",nav_settings:"设置",crumb:"网络",
   live:"在线",sec_net:"网络",managed:"已托管",f_netid:"网络 ID",f_subnet:"IPv4 网段",f_addr:"本机地址",f_server:"控制器",
   sec_members:"成员",th_name:"名称",th_id:"ID",th_ip:"IP",th_state:"状态",th_ep:"物理地址",th_path:"路径",th_io:"收发",
+  th_rtt:"延迟",th_seen:"最后活动",online:"在线",offline:"离线",ago:"前",never:"从未",routes:"受管路由",
+  auth_wait:"该成员正在等待授权。请联系网络管理员批准你的节点 ID。",
   sec_ops:"操作",connect:"按 ID 添加成员",connect_hint:"手动介绍其他节点。同一网络中的成员通常会自动加入。",
   cidph:"节点 ID",btn_connect:"连接",connect_note:"由你的 X25519 身份认证",
   sendtitle:"诊断 · ICMP 回显",send_hint:"向覆盖网络注入原始 IPv4 报文并路由到指定成员。",
@@ -203,6 +218,14 @@ function applyLang(){
 $('en').onclick=()=>{lang='en';localStorage.setItem('dp-lang','en');applyLang()};
 $('zh').onclick=()=>{lang='zh';localStorage.setItem('dp-lang','zh');applyLang()};
 
+function seenText(ts){
+ if(!ts) return t('never');
+ const sec=Math.floor((Date.now()-new Date(ts).getTime())/1000);
+ if(sec<5) return lang==='zh'?'刚刚':'just now';
+ if(sec<60) return sec+'s '+t('ago');
+ if(sec<3600) return Math.floor(sec/60)+'m '+t('ago');
+ return Math.floor(sec/3600)+'h '+t('ago');
+}
 async function status(){
  try{
   const s=await(await fetch('/api/status')).json();
@@ -212,13 +235,17 @@ async function status(){
   $('crumbnet').textContent=s.network||'default';
   $('sideid').textContent=(s.id||'').slice(0,16)||'—';
   $('pcount').textContent=String((s.peers||[]).length||'');
-  if(!s.peers||!s.peers.length){$('peers').innerHTML='<tr><td class="empty" colspan="8">'+t('nopeers')+'</td></tr>'}
+  $('authbanner').classList.toggle('show', s.authorized===false);
+  $('routes').innerHTML=(s.routes||[]).map(r=>`<span class="r">${r.cidr} <b>→ ${r.via.slice(0,8)}</b></span>`).join('');
+  if(!s.peers||!s.peers.length){$('peers').innerHTML='<tr><td class="empty" colspan="9">'+t('nopeers')+'</td></tr>'}
   else{$('peers').innerHTML=s.peers.map(p=>`<tr>
-    <td class="nm">${p.name||'device'}</td><td class="mono">${p.id.slice(0,16)}…</td>
+    <td class="nm">${p.name||'device'}<span class="sub">${p.endpoint||'—'}</span></td>
+    <td class="mono">${p.id.slice(0,16)}…</td>
     <td class="mono">${p.ip||'—'}</td>
-    <td><span class="st on"><i></i>Online</span></td>
-    <td class="mono">${p.endpoint||'—'}</td>
+    <td><span class="st ${p.online?'on':'off'}"><i></i>${t(p.online?'online':'offline')}</span></td>
     <td><span class="path ${p.direct?'direct':'relay'}">${t(p.mode)}</span></td>
+    <td class="rtt">${p.rtt_ms>0?p.rtt_ms+' ms':'—'}</td>
+    <td class="num">${seenText(p.last_seen)}</td>
     <td class="num">${p.tx} / ${p.rx}</td><td class="dots">···</td></tr>`).join('')}
  }catch(e){$('msg').textContent=t('statuserr')+e}
 }

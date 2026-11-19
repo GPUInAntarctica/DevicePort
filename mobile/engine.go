@@ -21,7 +21,7 @@ import (
 )
 
 // Version is the DevicePort release string.
-func Version() string { return "v0.1" }
+func Version() string { return "v0.1.5" }
 
 // NewIdentity generates a fresh X25519 private key and returns it as hex.
 func NewIdentity() (string, error) {
@@ -52,6 +52,7 @@ type engineConfig struct {
 	Name       string `json:"name"`
 	PrivateKey string `json:"private_key"`
 	MTU        int    `json:"mtu"`
+	MaxDirect  int    `json:"max_direct"`
 }
 
 // Engine wraps a node.Node for the mobile binding.
@@ -98,7 +99,8 @@ func NewEngine(configJSON string, tunFD int) (*Engine, error) {
 		return nil, err
 	}
 	n, err := node.New(ident, dev, node.Options{
-		Server: cfg.Server, Network: cfg.Network, Name: cfg.Name, AutoConnect: true,
+		Server: cfg.Server, Network: cfg.Network, Name: cfg.Name,
+		AutoConnect: true, MaxDirect: cfg.MaxDirect,
 	})
 	if err != nil {
 		dev.Close()
