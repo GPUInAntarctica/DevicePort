@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DevicePort</string>
+    <string name="start_vpn">Start VPN</string>
+    <string name="stop_vpn">Stop VPN</string>
+    <string name="status_idle">Not connected. Start the VPN to join the virtual LAN.</string>
+    <string name="status_running">DevicePort is running — the control panel is shown below.</string>
+    <string name="vpn_denied">VPN permission was denied.</string>
+    <string name="vpn_started">DevicePort VPN started</string>
+</resources>

@@ -1,0 +1,38 @@
+# Binaries / build output
+/bin/
+*.exe
+*.apk
+*.aab
+*.so
+*.aar
+*.test
+
+# Go
+/vendor/
+*.out
+coverage.txt
+
+# Electron / Node
+desktop/node_modules/
+desktop/dist/
+desktop/out/
+desktop/package-lock.json
+npm-debug.log*
+
+# Android build output
+android/build/
+android/app/libs/
+android/*.jks
+android/debug.jks
+local.properties
+
+# Test/runtime artifacts
+*.json.bak
+dp-*.json
+*.log
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DevicePort · Networks</title>
+<style>
+  :root{
+    --bg:#1b1e23; --side:#15181c; --panel:#22262c; --panel2:#1e2228;
+    --line:#343a43; --soft:#2b3139; --text:#d5dbe3; --mut:#8b95a2; --dim:#606a76;
+    --blue:#2f8fea; --blue-h:#3b9cf7; --green:#4cc38a; --amber:#e0a84c;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}
+
+  /* shell */
+  .app{display:flex;min-height:100vh}
+  .side{width:212px;flex:0 0 212px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0}
+  .brand{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--line)}
+  .brand .logo{width:26px;height:26px;border:2px solid var(--blue);border-radius:5px;transform:rotate(45deg);display:grid;place-items:center}
+  .brand .logo i{transform:rotate(-45deg);font:700 10px/1 var(--mono);color:var(--blue);font-style:normal}
+  .brand b{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+  .brand small{display:block;color:var(--dim);font:10px/1.2 var(--mono);letter-spacing:.04em}
+  nav{padding:14px 0;flex:1}
+  nav a{display:flex;align-items:center;gap:11px;padding:9px 18px;color:var(--mut);font-size:12.5px;border-left:2px solid transparent;cursor:pointer}
+  nav a:hover{color:var(--text);background:rgba(255,255,255,.025)}
+  nav a.on{color:#fff;border-left-color:var(--blue);background:rgba(47,143,234,.08)}
+  nav a .ic{width:14px;height:14px;border:1px solid currentColor;border-radius:2px;opacity:.65}
+  nav a.on .ic{border-color:var(--blue);opacity:1}
+  .side-foot{padding:14px 18px;border-top:1px solid var(--line);font:10px/1.6 var(--mono);color:var(--dim)}
+  .side-foot b{color:var(--mut);font-weight:400}
+
+  .main{flex:1;margin-left:212px;min-width:0}
+  .top{height:52px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 24px;background:var(--panel2)}
+  .crumb{color:var(--dim);font-size:12px}
+  .crumb b{color:var(--text);font-weight:500}
+  .top-r{margin-left:auto;display:flex;align-items:center;gap:18px}
+  .live{display:flex;align-items:center;gap:7px;color:var(--green);font-size:11.5px}
+  .live i{width:6px;height:6px;background:var(--green);border-radius:50%}
+  .lang{display:flex;gap:12px}
+  .lang button{background:none;border:0;color:var(--dim);font:inherit;font-size:11.5px;cursor:pointer;padding:3px 0}
+  .lang button.on{color:var(--blue)}
+  .content{padding:24px;max-width:1180px}
+
+  .sec{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px}
+  .sec h2{margin:0;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+  .sec .badge{font:10px/1 var(--mono);color:var(--blue);border:1px solid rgba(47,143,234,.35);background:rgba(47,143,234,.08);padding:4px 6px;border-radius:2px}
+  .sec .rule{flex:1;height:1px;background:var(--line)}
+  .sec.mt{margin-top:30px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:3px}
+  .facts{display:grid;grid-template-columns:repeat(4,1fr)}
+  .fact{padding:16px 18px;border-right:1px solid var(--line)}
+  .fact:last-child{border-right:0}
+  .fact label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:8px}
+  .fact .v{font:12.5px/1.5 var(--mono);color:var(--text);word-break:break-all}
+  .fact .v.blue{color:var(--blue)}
+
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:620px}
+  thead th{background:var(--panel2);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:600}
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--soft);font-size:12px;vertical-align:middle;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  .mono{font-family:var(--mono);font-size:11.5px;color:#aeb8c4}
+  .nm{color:#eef2f6;font-weight:500}
+  .st{display:inline-flex;align-items:center;gap:6px;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .st i{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .st.on{color:var(--green)} .st.off{color:var(--dim)}
+  .path{font-size:11px;padding:2px 7px;border-radius:2px;border:1px solid;letter-spacing:.03em}
+  .path.direct{color:var(--green);border-color:rgba(76,195,138,.3);background:rgba(76,195,138,.08)}
+  .path.relay{color:var(--amber);border-color:rgba(224,168,76,.3);background:rgba(224,168,76,.08)}
+  .num{font-family:var(--mono);color:var(--mut);font-size:11.5px}
+  .empty{padding:38px;text-align:center;color:var(--dim);font-size:12px}
+  .dots{color:var(--dim);cursor:pointer;font-size:16px;line-height:1}
+
+  .ops{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .op{padding:16px 18px}
+  .op h3{margin:0 0 6px;font-size:12.5px;font-weight:600;color:#e6ebf1}
+  .op p{margin:0 0 14px;font-size:11.5px;color:var(--mut);line-height:1.6}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  input{flex:1;min-width:120px;background:var(--bg);border:1px solid var(--line);border-radius:2px;color:var(--text);padding:8px 10px;font:12px var(--mono)}
+  input::placeholder{color:#626c78}
+  input:focus{outline:none;border-color:var(--blue)}
+  button.primary{background:var(--blue);color:#fff;border:0;border-radius:2px;padding:0 14px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer}
+  button.primary:hover{background:var(--blue-h)}
+  .note{margin-top:12px;font-size:10.5px;color:var(--dim);font-family:var(--mono)}
+  #msg{min-height:15px;margin-top:10px;font-size:11.5px;color:var(--green)}
+  footer{padding:20px 24px 30px;color:var(--dim);font:10.5px var(--mono);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  @media(max-width:640px){.side{display:none}.main{margin-left:0}.facts{grid-template-columns:repeat(2,1fr)}.ops{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="logo"><i>DP</i></div><div><b>DevicePort</b><small>v0.1</small></div></div>
+    <nav>
+      <a><span class="ic"></span><span data-i18n="nav_overview">Overview</span></a>
+      <a class="on"><span class="ic"></span><span data-i18n="nav_net">Networks</span></a>
+      <a><span class="ic"></span><span data-i18n="nav_members">Members</span></a>
+      <a><span class="ic"></span><span data-i18n="nav_settings">Settings</span></a>
+    </nav>
+    <div class="side-foot"><b>NODE</b><br><span id="sideid">—</span></div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <span class="crumb">DevicePort / <b data-i18n="crumb">Networks</b> / <b id="crumbnet">default</b></span>
+      <div class="top-r">
+        <span class="live"><i></i><span data-i18n="live">ONLINE</span></span>
+        <div class="lang"><button id="en">EN</button><button id="zh">中文</button></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="sec"><h2 data-i18n="sec_net">Network</h2><span class="badge" data-i18n="managed">MANAGED</span><span class="rule"></span></div>
+      <div class="card facts">
+        <div class="fact"><label data-i18n="f_netid">Network ID</label><div class="v blue" id="netid">—</div></div>
+        <div class="fact"><label data-i18n="f_subnet">IPv4 subnet</label><div class="v" id="subnet">—</div></div>
+        <div class="fact"><label data-i18n="f_addr">My address</label><div class="v" id="ip">—</div></div>
+        <div class="fact"><label data-i18n="f_server">Controller</label><div class="v" id="srv">—</div></div>
+      </div>
+
+      <div class="sec mt"><h2 data-i18n="sec_members">Members</h2><span class="badge" id="pcount">0</span><span class="rule"></span></div>
+      <div class="card tbl-wrap">
+        <table>
+          <thead><tr>
+            <th data-i18n="th_name">Name</th><th data-i18n="th_id">ID</th><th data-i18n="th_ip">IP</th>
+            <th data-i18n="th_state">Status</th><th data-i18n="th_ep">Physical address</th>
+            <th data-i18n="th_path">Path</th><th data-i18n="th_io">Tx / Rx</th><th></th>
+          </tr></thead>
+          <tbody id="peers"></tbody>
+        </table>
+      </div>
+
+      <div class="sec mt"><h2 data-i18n="sec_ops">Operations</h2><span class="rule"></span></div>
+      <div class="ops">
+        <div class="card op">
+          <h3 data-i18n="connect">Add member by ID</h3>
+          <p data-i18n="connect_hint">Introduce another node manually. Members on the same network are normally added automatically.</p>
+          <div class="row"><input id="cid" data-i18n-ph="cidph" placeholder="Node ID" maxlength="32"><button class="primary" data-i18n="btn_connect">Connect</button></div>
+          <div class="note" data-i18n="connect_note">Authenticated with your X25519 identity</div>
+        </div>
+        <div class="card op">
+          <h3 data-i18n="sendtitle">Diagnostic · ICMP echo</h3>
+          <p data-i18n="send_hint">Inject a raw IPv4 packet into the overlay and route it to a member.</p>
+          <div class="row">
+            <input id="dst" data-i18n-ph="dstph" placeholder="Destination IP" value="">
+            <input id="txt" data-i18n-ph="txtph" placeholder="Payload" value="hello from DevicePort">
+            <button class="primary" data-i18n="btn_send">Send</button>
+          </div>
+          <div class="note" data-i18n="send_note">AES-256-GCM encrypted end to end</div>
+        </div>
+      </div>
+      <div id="msg"></div>
+    </div>
+    <footer>
+      <span>DEVICEPORT v0.1 · X25519 / HKDF-SHA256 / AES-256-GCM</span>
+      <span data-i18n="footer">IPv6 UNDERLAY · VIRTUAL IPv4</span>
+    </footer>
+  </div>
+</div>
+
+<script>
+const I18N={
+ en:{
+  nav_overview:"Overview",nav_net:"Networks",nav_members:"Members",nav_settings:"Settings",crumb:"Networks",
+  live:"ONLINE",sec_net:"Network",managed:"MANAGED",f_netid:"Network ID",f_subnet:"IPv4 subnet",f_addr:"My address",f_server:"Controller",
+  sec_members:"Members",th_name:"Name",th_id:"ID",th_ip:"IP",th_state:"Status",th_ep:"Physical address",th_path:"Path",th_io:"Tx / Rx",
+  sec_ops:"Operations",connect:"Add member by ID",connect_hint:"Introduce another node manually. Members on the same network are normally added automatically.",
+  cidph:"Node ID",btn_connect:"Connect",connect_note:"Authenticated with your X25519 identity",
+  sendtitle:"Diagnostic · ICMP echo",send_hint:"Inject a raw IPv4 packet into the overlay and route it to a member.",
+  dstph:"Destination IP",txtph:"Payload",btn_send:"Send",send_note:"AES-256-GCM encrypted end to end",
+  nopeers:"No members yet",direct:"DIRECT",relay:"RELAY",sent:"Packet sent",connsent:"Connect request sent",
+  statuserr:"Status unavailable: ",footer:"IPv6 UNDERLAY · VIRTUAL IPv4"
+ },
+ zh:{
+  nav_overview:"概览",nav_net:"网络",nav_members:"成员",nav_settings:"设置",crumb:"网络",
+  live:"在线",sec_net:"网络",managed:"已托管",f_netid:"网络 ID",f_subnet:"IPv4 网段",f_addr:"本机地址",f_server:"控制器",
+  sec_members:"成员",th_name:"名称",th_id:"ID",th_ip:"IP",th_state:"状态",th_ep:"物理地址",th_path:"路径",th_io:"收发",
+  sec_ops:"操作",connect:"按 ID 添加成员",connect_hint:"手动介绍其他节点。同一网络中的成员通常会自动加入。",
+  cidph:"节点 ID",btn_connect:"连接",connect_note:"由你的 X25519 身份认证",
+  sendtitle:"诊断 · ICMP 回显",send_hint:"向覆盖网络注入原始 IPv4 报文并路由到指定成员。",
+  dstph:"目标 IP",txtph:"载荷",btn_send:"发送",send_note:"端到端 AES-256-GCM 加密",
+  nopeers:"暂无成员",direct:"直连",relay:"中继",sent:"已发送",connsent:"连接请求已发送",
+  statuserr:"状态获取失败：",footer:"IPv6 底层 · 虚拟 IPv4"
+ }
+};
+const $=id=>document.getElementById(id);
+let lang=localStorage.getItem('dp-lang')||(navigator.language.toLowerCase().startsWith('zh')?'zh':'en');
+function t(k){return (I18N[lang]&&I18N[lang][k])||I18N.en[k]||k}
+function applyLang(){
+ document.documentElement.lang=lang;
+ document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
+ document.querySelectorAll('[data-i18n-ph]').forEach(e=>e.placeholder=t(e.dataset.i18nPh));
+ $('en').style.color=lang==='en'?'var(--blue)':'var(--dim)';
+ $('zh').style.color=lang==='zh'?'var(--blue)':'var(--dim)';
+ status();
+}
+$('en').onclick=()=>{lang='en';localStorage.setItem('dp-lang','en');applyLang()};
+$('zh').onclick=()=>{lang='zh';localStorage.setItem('dp-lang','zh');applyLang()};
+
+async function status(){
+ try{
+  const s=await(await fetch('/api/status')).json();
+  $('ip').textContent=s.ip||'—';
+  $('netid').textContent=(s.network||'default').toUpperCase()+' / '+(s.prefix||'').split('/')[0];
+  $('subnet').textContent=s.prefix||'—';$('srv').textContent=s.server||'—';
+  $('crumbnet').textContent=s.network||'default';
+  $('sideid').textContent=(s.id||'').slice(0,16)||'—';
+  $('pcount').textContent=String((s.peers||[]).length||'');
+  if(!s.peers||!s.peers.length){$('peers').innerHTML='<tr><td class="empty" colspan="8">'+t('nopeers')+'</td></tr>'}
+  else{$('peers').innerHTML=s.peers.map(p=>`<tr>
+    <td class="nm">${p.name||'device'}</td><td class="mono">${p.id.slice(0,16)}…</td>
+    <td class="mono">${p.ip||'—'}</td>
+    <td><span class="st on"><i></i>Online</span></td>
+    <td class="mono">${p.endpoint||'—'}</td>
+    <td><span class="path ${p.direct?'direct':'relay'}">${t(p.mode)}</span></td>
+    <td class="num">${p.tx} / ${p.rx}</td><td class="dots">···</td></tr>`).join('')}
+ }catch(e){$('msg').textContent=t('statuserr')+e}
+}
+function msg(x){$('msg').textContent=x;setTimeout(()=>{if($('msg').textContent===x)$('msg').textContent=''},3800)}
+$('cid').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doConnect()}});
+function doConnect(){const id=$('cid').value.trim();if(!id)return;fetch('/api/connect',{method:'POST',body:new URLSearchParams({id})}).then(r=>msg(r.ok?t('connsent'):'error'))}
+document.querySelector('#cid').closest('.card').querySelector('button').onclick=doConnect;
+function cksum(b){let s=0;for(let i=0;i<b.length;i+=2){s+=(b[i]<<8)|(b[i+1]||0)}while(s>>16)s=(s&0xffff)+(s>>16);return(~s)&0xffff}
+function makePing(dst,text){
+ const ip=dst.split('.').map(Number);if(ip.length!==4||ip.some(x=>isNaN(x)||x<0||x>255))throw Error('bad address');
+ const data=new TextEncoder().encode(text),icmp=new Uint8Array(8+data.length);
+ icmp[0]=8;icmp[4]=0x12;icmp[5]=0x34;icmp.set(data,8);
+ const c=cksum(icmp);icmp[2]=c>>8;icmp[3]=c&255;
+ const pkt=new Uint8Array(20+icmp.length);pkt[0]=0x45;pkt[2]=(20+icmp.length)>>8;pkt[3]=(20+icmp.length)&255;
+ pkt[8]=64;pkt[9]=1;pkt[12]=10;pkt[13]=66;pkt[14]=0;pkt[15]=1;pkt.set(ip,16);pkt.set(icmp,20);
+ const c2=cksum(pkt.slice(0,20));pkt[10]=c2>>8;pkt[11]=c2&255;
+ return[...pkt].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+document.querySelector('#dst').closest('.card').querySelector('button').onclick=async()=>{try{
+ const hex=makePing($('dst').value.trim(),$('txt').value);
+ const r=await fetch('/api/send',{method:'POST',body:new URLSearchParams({hex})});
+ msg(r.ok?t('sent'):await r.text());
+}catch(err){msg('error: '+err.message)}};
+applyLang();setInterval(status,2000);
+</script>
+</body>
+</html>
