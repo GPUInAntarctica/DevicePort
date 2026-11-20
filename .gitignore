@@ -35,6 +35,7 @@ dp-*.json
 !dist/
 !dist/*.exe
 !dist/*.apk
+!dist/*.AppImage
 !dist/deviceport-*
 
 # Editors / OS
@@ -42,3 +43,6 @@ dp-*.json
 .vscode/
 *.swp
 .DS_Store
+
+# AppImage extraction leftovers
+squashfs-root/

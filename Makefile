@@ -7,7 +7,7 @@ VERSION := v0.1.5
 BIN := bin
 DIST := dist
 
-.PHONY: all build release build-windows build-android test fmt vet clean desktop android-apk
+.PHONY: all build release build-windows build-android test fmt vet clean desktop android-apk appimage
 
 all: fmt vet test build
 
@@ -38,12 +38,17 @@ build-android:
 	GOOS=android GOARCH=arm64 CGO_ENABLED=0 $(GO) build -o $(BIN)/deviceport-android-arm64 ./cmd/deviceport
 
 # Populate dist/ with the release assets tracked by git.
-release: build build-windows android-apk
+release: build build-windows android-apk appimage
 	cp bin/DevicePort-$(VERSION).apk $(DIST)/DevicePort-$(VERSION).apk
 	ls -lh $(DIST)
 
 android-apk:
 	bash android/build.sh
+
+# Single-file AppImage: double-click opens a terminal with a start menu.
+# Set APPIMAGETOOL=/path/to/appimagetool if it is not in /tmp.
+appimage: build
+	bash packaging/build-appimage.sh
 
 desktop:
 	cd desktop && npm install && npm run start

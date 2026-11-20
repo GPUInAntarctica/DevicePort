@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=DevicePort
+GenericName=IPv6 Overlay VPN
+Comment=IPv6-underlay overlay VPN with virtual IPv4 addresses
+Exec=deviceport
+Icon=deviceport
+Terminal=true
+Categories=Network;X-VPN;
+StartupNotify=false

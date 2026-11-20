@@ -1,0 +1,77 @@
+#!/bin/sh
+# DevicePort AppImage entry point.
+# Double-clicking the AppImage opens a terminal (see .desktop: Terminal=true)
+# and shows this menu. Command-line arguments are passed through to the binary.
+HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+BIN="$HERE/usr/bin/deviceport"
+
+if [ ! -x "$BIN" ]; then
+  echo "DevicePort: bundled binary is missing" >&2
+  exit 1
+fi
+
+# If invoked with arguments (e.g. `./DevicePort.AppImage server ...`), run directly.
+if [ "$#" -gt 0 ]; then
+  exec "$BIN" "$@"
+fi
+
+echo "=============================================="
+echo " DevicePort v0.1.5 - IPv6 overlay VPN"
+echo "=============================================="
+
+if command -v whiptail >/dev/null 2>&1; then
+  while true; do
+    choice=$(whiptail --title "DevicePort" --menu \
+      "Choose an action:" 15 60 5 \
+      "1" "Start server (signaling + relay)" \
+      "2" "Start node (connect to a server)" \
+      "3" "Show help / all options" \
+      "4" "Quit" 3>&1 1>&2 2>&3) || exit 0
+    case "$choice" in
+      1)
+        listen=$(whiptail --title "Server" --inputbox "Listen address:" 10 60 '[::]:9000' 3>&1 1>&2 2>&3) || continue
+        subnet=$(whiptail --title "Server" --inputbox "IPv4 subnet:" 10 60 '10.66.0.0/24' 3>&1 1>&2 2>&3) || continue
+        echo "Starting server on $listen (subnet $subnet) ..."
+        exec "$BIN" server --listen "$listen" --subnet "$subnet"
+        ;;
+      2)
+        server=$(whiptail --title "Node" --inputbox "Signaling server (host:port):" 10 60 '[::1]:9000' 3>&1 1>&2 2>&3) || continue
+        name=$(whiptail --title "Node" --inputbox "Device name:" 10 60 "$(hostname)" 3>&1 1>&2 2>&3) || continue
+        echo "Connecting to $server as $name ..."
+        exec "$BIN" node --server "$server" --name "$name"
+        ;;
+      3)
+        "$BIN" help
+        echo
+        echo "Tip: run './DevicePort.AppImage server -h' for all server options."
+        printf "Press Enter to continue..."; read -r dummy
+        ;;
+      4|*) exit 0 ;;
+    esac
+  done
+else
+  # No whiptail: plain terminal menu.
+  while true; do
+    echo
+    echo "  1) Start server (signaling + relay)"
+    echo "  2) Start node (connect to a server)"
+    echo "  3) Show help / all options"
+    echo "  4) Quit"
+    printf "Choice [1-4]: "
+    read -r c
+    case "$c" in
+      1)
+        printf "Listen address [[::]:9000]: "; read -r listen
+        printf "IPv4 subnet [10.66.0.0/24]: "; read -r subnet
+        exec "$BIN" server --listen "${listen:-[::]:9000}" --subnet "${subnet:-10.66.0.0/24}"
+        ;;
+      2)
+        printf "Signaling server [[::1]:9000]: "; read -r server
+        printf "Device name [%s]: " "$(hostname)"; read -r name
+        exec "$BIN" node --server "${server:-[::1]:9000}" --name "${name:-$(hostname)}"
+        ;;
+      3) "$BIN" help; printf "Press Enter to continue..."; read -r dummy ;;
+      4|*) exit 0 ;;
+    esac
+  done
+fi

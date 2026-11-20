@@ -21,7 +21,8 @@ No build toolchain needed — grab the assets from the
 
 | Platform | File | Run |
 |----------|------|-----|
-| Linux x86-64 | `dist/deviceport-linux-amd64` | `chmod +x deviceport-linux-amd64` |
+| Linux x86-64 (AppImage) | `dist/DevicePort-x86_64.AppImage` | `chmod +x ... && ./DevicePort-x86_64.AppImage` — opens a terminal menu |
+| Linux x86-64 (bare binary) | `dist/deviceport-linux-amd64` | `chmod +x deviceport-linux-amd64` then run from a terminal |
 | Windows x86-64 | `dist/deviceport-windows-amd64.exe` | double-click or run from PowerShell |
 | Android | `dist/DevicePort-v0.1.5.apk` | install on device/emulator |
 
@@ -37,6 +38,12 @@ The Linux and Windows files are a **single executable** containing both roles:
 
 On Windows: `deviceport-windows-amd64.exe server ...` and `... node ...`.
 `deviceport` without a subcommand defaults to `node`. Run `deviceport help` for details.
+
+The **AppImage is recommended on the desktop**: it is a single file you can double-click.
+A terminal window opens with a menu (Start server / Start node / Help) because this is a
+command-line program. You can also pass arguments directly, e.g.
+`./DevicePort-x86_64.AppImage server --listen '[::]:9000'`. If your distro has no FUSE,
+run it with `--appimage-extract-and-run`.
 
 ## Features
 
@@ -94,7 +101,7 @@ deviceportctl -admin http://127.0.0.1:9001 route add default 192.168.1.0/24 <gat
 ## Docs
 
 - [Architecture](docs/ARCHITECTURE.md) · [Protocol v2](docs/PROTOCOL.md)
-- [Windows / Wintun & Wine](docs/WINDOWS.md) · [Android APK & emulator](docs/ANDROID.md)
+- [Linux AppImage](docs/APPIMAGE.md) · [Windows / Wintun & Wine](docs/WINDOWS.md) · [Android APK & emulator](docs/ANDROID.md)
 - [Desktop / Electron](docs/DESKTOP.md)
 
 ---
@@ -113,7 +120,8 @@ Electron 桌面端和 Android VPN 应用。
 
 | 平台 | 文件 |
 |------|------|
-| Linux x86-64 | `dist/deviceport-linux-amd64` |
+| Linux x86-64（推荐） | `dist/DevicePort-x86_64.AppImage`（双击打开终端菜单） |
+| Linux x86-64 | `dist/deviceport-linux-amd64`（命令行） |
 | Windows x86-64 | `dist/deviceport-windows-amd64.exe` |
 | Android | `dist/DevicePort-v0.1.5.apk` |
 
