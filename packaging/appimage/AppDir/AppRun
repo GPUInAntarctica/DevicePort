@@ -1,7 +1,7 @@
 #!/bin/sh
 # DevicePort AppImage entry point.
-# Double-clicking the AppImage opens a terminal (see .desktop: Terminal=true)
-# and shows this menu. Command-line arguments are passed through to the binary.
+# Double-clicking the registered launcher (packaging/install-linux.sh) opens a
+# browser window; this AppRun is the direct/terminal entry point.
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
 BIN="$HERE/usr/bin/deviceport"
 

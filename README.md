@@ -39,11 +39,13 @@ The Linux and Windows files are a **single executable** containing both roles:
 On Windows: `deviceport-windows-amd64.exe server ...` and `... node ...`.
 `deviceport` without a subcommand defaults to `node`. Run `deviceport help` for details.
 
-The **AppImage is recommended on the desktop**: it is a single file you can double-click.
-A terminal window opens with a menu (Start server / Start node / Help) because this is a
-command-line program. You can also pass arguments directly, e.g.
+The **AppImage is recommended on the desktop**. Register it once with
+`bash packaging/install-linux.sh`, then double-click the **DevicePort** launcher — it
+opens a browser window with the control panel (no terminal, no root). Without
+registration, a fresh AppImage has no file association and double-click does nothing.
+You can also pass arguments directly, e.g.
 `./DevicePort-x86_64.AppImage server --listen '[::]:9000'`. If your distro has no FUSE,
-run it with `--appimage-extract-and-run`.
+run it with `--appimage-extract-and-run`. See [docs/APPIMAGE.md](docs/APPIMAGE.md).
 
 ## Features
 

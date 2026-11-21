@@ -13,7 +13,7 @@ All notable changes to this project are documented here.
 - Stable per-member IP allocation.
 - Android settings page for server, network and device name.
 - ZeroTier-style dark console UI.
-- Linux AppImage: double-click opens a terminal start menu; arguments pass through to the binary.
+- Linux AppImage: registered launcher opens the control panel in a browser on double-click (`packaging/install-linux.sh`); unregistered AppImages pass arguments through a terminal menu.
 - Ready-to-run Linux, Windows and APK assets tracked in `dist/`.
 
 ## v0.1.5
