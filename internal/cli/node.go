@@ -31,6 +31,7 @@ func RunNode(args []string) {
 	guiAddr := fs.String("gui", "", "override GUI listen address (empty disables GUI)")
 	connect := fs.String("connect", "", "connect to this peer ID after startup")
 	daemon := fs.Bool("daemon", false, "run without the web GUI")
+	noDiscovery := fs.Bool("no-discovery", false, "disable IPv6 multicast LAN discovery")
 	_ = fs.Parse(args)
 
 	logger := log.New(os.Stderr, "dp: ", log.LstdFlags)
@@ -67,12 +68,13 @@ func RunNode(args []string) {
 	defer dev.Close()
 
 	n, err := node.New(ident, dev, node.Options{
-		Server:      cfg.Server,
-		Network:     cfg.Network,
-		Name:        cfg.Name,
-		Logger:      logger,
-		AutoConnect: true,
-		MaxDirect:   *maxDirect,
+		Server:       cfg.Server,
+		Network:      cfg.Network,
+		Name:         cfg.Name,
+		Logger:       logger,
+		AutoConnect:  true,
+		MaxDirect:    *maxDirect,
+		LANDiscovery: !*noDiscovery,
 	})
 	if err != nil {
 		logger.Fatalf("create node: %v", err)

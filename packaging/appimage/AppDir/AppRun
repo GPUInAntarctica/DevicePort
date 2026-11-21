@@ -16,7 +16,7 @@ if [ "$#" -gt 0 ]; then
 fi
 
 echo "=============================================="
-echo " DevicePort v0.1.5 - IPv6 overlay VPN"
+echo " DevicePort v0.1.6 - IPv6 overlay VPN"
 echo "=============================================="
 
 if command -v whiptail >/dev/null 2>&1; then

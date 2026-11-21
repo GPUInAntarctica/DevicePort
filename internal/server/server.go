@@ -421,10 +421,19 @@ func (s *Server) remove(c *client) {
 		return
 	}
 	c.ready = false
-	delete(s.clients, c.id)
+	// A reconnecting node with the same identity replaces the old client.
+	// Only remove the bookkeeping entry if it still points to us, otherwise a
+	// late cleanup would delete the newly connected client.
+	if s.clients[c.id] == c {
+		delete(s.clients, c.id)
+	}
 	if n := s.networks[c.network]; n != nil {
-		delete(n.peers, c.id)
-		delete(n.pending, c.id)
+		if n.peers[c.id] == c {
+			delete(n.peers, c.id)
+		}
+		if n.pending[c.id] == c {
+			delete(n.pending, c.id)
+		}
 		if c.authorized {
 			for _, peer := range n.peers {
 				_ = peer.send(&protocol.Message{Type: protocol.MsgPeerLeft, ID: c.id})

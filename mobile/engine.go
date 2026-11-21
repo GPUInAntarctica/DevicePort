@@ -21,7 +21,7 @@ import (
 )
 
 // Version is the DevicePort release string.
-func Version() string { return "v0.1.5" }
+func Version() string { return "v0.1.6" }
 
 // NewIdentity generates a fresh X25519 private key and returns it as hex.
 func NewIdentity() (string, error) {
@@ -47,12 +47,14 @@ func NodeID(privateHex string) (string, error) {
 
 // engineConfig is the JSON accepted by NewEngine.
 type engineConfig struct {
-	Server     string `json:"server"`
-	Network    string `json:"network"`
-	Name       string `json:"name"`
-	PrivateKey string `json:"private_key"`
-	MTU        int    `json:"mtu"`
-	MaxDirect  int    `json:"max_direct"`
+	Server       string   `json:"server"`
+	Network      string   `json:"network"`
+	Name         string   `json:"name"`
+	PrivateKey   string   `json:"private_key"`
+	MTU          int      `json:"mtu"`
+	MaxDirect    int      `json:"max_direct"`
+	LANDiscovery *bool    `json:"lan_discovery"`
+	IPv6         []string `json:"ipv6"`
 }
 
 // Engine wraps a node.Node for the mobile binding.
@@ -98,9 +100,15 @@ func NewEngine(configJSON string, tunFD int) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	lanDiscovery := true
+	if cfg.LANDiscovery != nil {
+		lanDiscovery = *cfg.LANDiscovery
+	}
 	n, err := node.New(ident, dev, node.Options{
 		Server: cfg.Server, Network: cfg.Network, Name: cfg.Name,
 		AutoConnect: true, MaxDirect: cfg.MaxDirect,
+		LANDiscovery: lanDiscovery,
+		DisplayIPv6:  cfg.IPv6,
 	})
 	if err != nil {
 		dev.Close()

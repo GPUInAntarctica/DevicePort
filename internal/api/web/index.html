@@ -57,6 +57,7 @@
   .fact:last-child{border-right:0}
   .fact label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:8px}
   .fact .v{font:12.5px/1.5 var(--mono);color:var(--text);word-break:break-all}
+  .fact .v.small{font-size:11.5px;line-height:1.45;color:#9fb2c9}
   .fact .v.blue{color:var(--blue)}
 
   .tbl-wrap{overflow-x:auto}
@@ -103,7 +104,7 @@
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand"><div class="logo"><i>DP</i></div><div><b>DevicePort</b><small>v0.1.5</small></div></div>
+    <div class="brand"><div class="logo"><i>DP</i></div><div><b>DevicePort</b><small>v0.1.6</small></div></div>
     <nav>
       <a><span class="ic"></span><span data-i18n="nav_overview">Overview</span></a>
       <a class="on"><span class="ic"></span><span data-i18n="nav_net">Networks</span></a>
@@ -130,7 +131,9 @@
         <div class="fact"><label data-i18n="f_netid">Network ID</label><div class="v blue" id="netid">—</div></div>
         <div class="fact"><label data-i18n="f_subnet">IPv4 subnet</label><div class="v" id="subnet">—</div></div>
         <div class="fact"><label data-i18n="f_addr">My address</label><div class="v" id="ip">—</div></div>
+        <div class="fact"><label data-i18n="f_ipv6">Underlay IPv6</label><div class="v small" id="ipv6">—</div></div>
         <div class="fact"><label data-i18n="f_server">Controller</label><div class="v" id="srv">—</div></div>
+        <div class="fact"><label data-i18n="f_discovery">LAN discovery</label><div class="v" id="discovery">—</div></div>
       </div>
       <div id="routes" class="routes"></div>
 
@@ -169,7 +172,7 @@
       <div id="msg"></div>
     </div>
     <footer>
-      <span>DEVICEPORT v0.1.5 · X25519 / HKDF-SHA256 / AES-256-GCM</span>
+      <span>DEVICEPORT v0.1.6 · X25519 / HKDF-SHA256 / AES-256-GCM</span>
       <span data-i18n="footer">IPv6 UNDERLAY · VIRTUAL IPv4</span>
     </footer>
   </div>
@@ -179,7 +182,7 @@
 const I18N={
  en:{
   nav_overview:"Overview",nav_net:"Networks",nav_members:"Members",nav_settings:"Settings",crumb:"Networks",
-  live:"ONLINE",sec_net:"Network",managed:"MANAGED",f_netid:"Network ID",f_subnet:"IPv4 subnet",f_addr:"My address",f_server:"Controller",
+  live:"ONLINE",sec_net:"Network",managed:"MANAGED",f_netid:"Network ID",f_subnet:"IPv4 subnet",f_addr:"My address",f_ipv6:"Underlay IPv6",f_discovery:"LAN discovery",f_server:"Controller",
   sec_members:"Members",th_name:"Name",th_id:"ID",th_ip:"IP",th_state:"Status",th_ep:"Physical address",th_path:"Path",th_io:"Tx / Rx",
   th_rtt:"RTT",th_seen:"Last seen",online:"online",offline:"offline",ago:"ago",never:"never",routes:"Managed routes",
   auth_wait:"This member is awaiting authorization. Ask the network administrator to approve your node ID.",
@@ -192,7 +195,7 @@ const I18N={
  },
  zh:{
   nav_overview:"概览",nav_net:"网络",nav_members:"成员",nav_settings:"设置",crumb:"网络",
-  live:"在线",sec_net:"网络",managed:"已托管",f_netid:"网络 ID",f_subnet:"IPv4 网段",f_addr:"本机地址",f_server:"控制器",
+  live:"在线",sec_net:"网络",managed:"已托管",f_netid:"网络 ID",f_subnet:"IPv4 网段",f_addr:"本机地址",f_ipv6:"底层 IPv6",f_discovery:"局域网发现",f_server:"控制器",
   sec_members:"成员",th_name:"名称",th_id:"ID",th_ip:"IP",th_state:"状态",th_ep:"物理地址",th_path:"路径",th_io:"收发",
   th_rtt:"延迟",th_seen:"最后活动",online:"在线",offline:"离线",ago:"前",never:"从未",routes:"受管路由",
   auth_wait:"该成员正在等待授权。请联系网络管理员批准你的节点 ID。",
@@ -232,6 +235,8 @@ async function status(){
   $('ip').textContent=s.ip||'—';
   $('netid').textContent=(s.network||'default').toUpperCase()+' / '+(s.prefix||'').split('/')[0];
   $('subnet').textContent=s.prefix||'—';$('srv').textContent=s.server||'—';
+  $('ipv6').innerHTML=(s.ipv6&&s.ipv6.length)?s.ipv6.map(function(a){return '<div>'+a+'</div>'}).join(''):'—';
+  $('discovery').textContent=s.lan_discovery?(lang==='zh'?'已开启 (ff02::1)':'ON (ff02::1)'):(lang==='zh'?'已关闭':'OFF');
   $('crumbnet').textContent=s.network||'default';
   $('sideid').textContent=(s.id||'').slice(0,16)||'—';
   $('pcount').textContent=String((s.peers||[]).length||'');

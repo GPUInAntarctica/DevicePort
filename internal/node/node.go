@@ -12,7 +12,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,6 +49,13 @@ type Options struct {
 	// peers are reachable through the server relay. 0 means unlimited (full
 	// mesh); the default is a small number to avoid O(n²) punch traffic.
 	MaxDirect int
+	// LANDiscovery enables IPv6 multicast peer discovery on the local network.
+	// Peers found this way are introduced directly, without waiting for the
+	// signaling server, and still use the same encrypted data plane.
+	LANDiscovery bool
+	// DisplayIPv6 is an optional list supplied by the host app (e.g. Android,
+	// where /proc/net/if_inet6 is blocked by SELinux). Used only for display.
+	DisplayIPv6 []string
 }
 
 // Peer holds the runtime state of one remote node.
@@ -103,18 +112,20 @@ type PeerStatus struct {
 
 // Status is a snapshot of the whole node for the GUI/CLI.
 type Status struct {
-	ID         string        `json:"id"`
-	Name       string        `json:"name"`
-	IP         string        `json:"ip"`
-	Prefix     string        `json:"prefix"`
-	Network    string        `json:"network"`
-	Server     string        `json:"server"`
-	UDPAddr    string        `json:"udp_addr"`
-	Encryption string        `json:"encryption"`
-	Authorized bool          `json:"authorized"`
-	Routes     []RouteStatus `json:"routes"`
-	Uptime     string        `json:"uptime"`
-	Peers      []PeerStatus  `json:"peers"`
+	ID           string        `json:"id"`
+	Name         string        `json:"name"`
+	IP           string        `json:"ip"`
+	Prefix       string        `json:"prefix"`
+	Network      string        `json:"network"`
+	Server       string        `json:"server"`
+	UDPAddr      string        `json:"udp_addr"`
+	IPv6         []string      `json:"ipv6"`
+	LANDiscovery bool          `json:"lan_discovery"`
+	Encryption   string        `json:"encryption"`
+	Authorized   bool          `json:"authorized"`
+	Routes       []RouteStatus `json:"routes"`
+	Uptime       string        `json:"uptime"`
+	Peers        []PeerStatus  `json:"peers"`
 }
 
 // Node is a DevicePort client instance.
@@ -141,10 +152,11 @@ type Node struct {
 	// pending keepalive tokens used for RTT measurement without clock sync
 	pings map[uint64]time.Time
 
-	closed   chan struct{}
-	closeOne sync.Once
-	wg       sync.WaitGroup
-	running  atomic.Bool
+	closed        chan struct{}
+	closeOne      sync.Once
+	wg            sync.WaitGroup
+	running       atomic.Bool
+	stopDiscovery func()
 
 	// OnChange is called (in a goroutine) whenever peer state changes.
 	OnChange func()
@@ -227,6 +239,10 @@ func (n *Node) Start() error {
 	go n.udpLoop()
 	go n.tunLoop()
 	go n.maintenanceLoop()
+	if n.opts.LANDiscovery {
+		n.stopDiscovery = n.startDiscovery()
+		n.logger.Printf("LAN discovery enabled (IPv6 multicast port %d)", LANDiscoveryPort)
+	}
 	n.logger.Printf("node %s started (udp %s, server %s)", short(n.ident.ID()), n.udp.LocalAddr(), n.opts.Server)
 	return nil
 }
@@ -237,6 +253,10 @@ func (n *Node) Close() error {
 	n.closeOne.Do(func() {
 		n.running.Store(false)
 		close(n.closed)
+		if n.stopDiscovery != nil {
+			n.stopDiscovery()
+			n.stopDiscovery = nil
+		}
 		if n.control != nil {
 			n.control.Close()
 		}
@@ -347,6 +367,9 @@ func (n *Node) learnPeer(info *protocol.PeerInfo) {
 	if info == nil || info.ID == n.ident.ID() {
 		return
 	}
+	// LAN discovery announces a peer without a server-assigned virtual IP.
+	// Never let that empty IP erase one we already learned from the server.
+	infoCopy := *info
 	key, err := crypto.SharedKey(n.ident.PrivateKey(), info.PublicKey)
 	if err != nil {
 		n.logger.Printf("peer %s: key agreement failed: %v", short(info.ID), err)
@@ -360,28 +383,45 @@ func (n *Node) learnPeer(info *protocol.PeerInfo) {
 
 	n.mu.Lock()
 	p := n.peers[info.ID]
+	isNew := p == nil
 	if p == nil {
 		now := time.Now()
 		p = &Peer{lastTry: now, punchUntil: now.Add(punchBurst)}
 		n.peers[info.ID] = p
 		n.byShortID[sid] = p
 	}
+	oldEndpoints := append([]string(nil), p.Endpoints...)
 	oldIP := p.Info.IP
-	p.Info = *info
+	if infoCopy.IP == "" && oldIP != "" {
+		infoCopy.IP = oldIP
+	}
+	p.Info = infoCopy
 	p.Key = key
-	p.Endpoints = append([]string(nil), info.Endpoints...)
-	if oldIP != "" && oldIP != info.IP {
+	p.Endpoints = append([]string(nil), infoCopy.Endpoints...)
+	endpointsChanged := len(oldEndpoints) != len(infoCopy.Endpoints)
+	if !endpointsChanged {
+		for i := range infoCopy.Endpoints {
+			if oldEndpoints[i] != infoCopy.Endpoints[i] {
+				endpointsChanged = true
+				break
+			}
+		}
+	}
+	if oldIP != "" && oldIP != infoCopy.IP {
 		delete(n.byIP, oldIP)
 	}
-	if info.IP != "" {
-		n.byIP[info.IP] = p
+	if infoCopy.IP != "" {
+		n.byIP[infoCopy.IP] = p
 	}
 	if !p.direct && time.Since(p.lastTry) > punchRetry {
 		p.punchUntil = time.Now().Add(punchBurst)
 		p.lastTry = time.Now()
 	}
 	n.mu.Unlock()
-	n.logger.Printf("peer %s (%s) at %s, %d endpoint(s)", short(info.ID), info.Name, info.IP, len(info.Endpoints))
+	if isNew || endpointsChanged || (oldIP != infoCopy.IP) {
+		n.logger.Printf("peer %s (%s) at %s, %d endpoint(s): %v",
+			short(info.ID), infoCopy.Name, infoCopy.IP, len(infoCopy.Endpoints), infoCopy.Endpoints)
+	}
 }
 
 // setRoutes parses managed routes pushed by the server. Invalid CIDRs are
@@ -797,7 +837,9 @@ func (n *Node) doPunch() {
 		for _, ep := range t.eps {
 			// Always send punches as raw UDP datagrams to open a NAT binding;
 			// relaying a punch would never establish a direct path.
-			_ = n.sendFrame(t.peer, protocol.TypePunch, nil, ep, false)
+			if err := n.sendFrame(t.peer, protocol.TypePunch, nil, ep, false); err != nil && n.logger != nil {
+				n.logger.Printf("punch %s: %v", ep, err)
+			}
 		}
 	}
 }
@@ -807,15 +849,17 @@ func (n *Node) Status() Status {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	s := Status{
-		ID:         n.ident.ID(),
-		Name:       n.opts.Name,
-		IP:         n.selfIP,
-		Prefix:     n.prefix,
-		Network:    n.opts.Network,
-		Server:     n.opts.Server,
-		UDPAddr:    n.udp.LocalAddr().String(),
-		Encryption: "X25519 + HKDF-SHA256 + AES-256-GCM",
-		Authorized: n.authorized,
+		ID:           n.ident.ID(),
+		Name:         n.opts.Name,
+		IP:           n.selfIP,
+		Prefix:       n.prefix,
+		Network:      n.opts.Network,
+		Server:       n.opts.Server,
+		UDPAddr:      n.udp.LocalAddr().String(),
+		IPv6:         n.displayIPv6(),
+		LANDiscovery: n.opts.LANDiscovery,
+		Encryption:   "X25519 + HKDF-SHA256 + AES-256-GCM",
+		Authorized:   n.authorized,
 	}
 	if n.running.Load() {
 		s.Uptime = time.Since(n.started).Truncate(time.Second).String()
@@ -873,5 +917,81 @@ func localEndpoints(port int) []string {
 	}
 	// Loopback is essential for local testing and harmless otherwise.
 	out = append(out, net.JoinHostPort("::1", fmt.Sprintf("%d", port)))
+	return out
+}
+
+func (n *Node) displayIPv6() []string {
+	if len(n.opts.DisplayIPv6) > 0 {
+		return n.opts.DisplayIPv6
+	}
+	return localIPv6Addresses()
+}
+
+// localIPv6Addresses returns the node's usable IPv6 addresses for display in
+// the console. Global addresses are preferred; link-local addresses are kept
+// because they are what LAN discovery uses. IPv4 and loopback are omitted.
+func localIPv6Addresses() []string {
+	var out []string
+	seen := map[string]bool{}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		ifaces = nil // /proc fallback below still works on Linux/Android
+	}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, _ := iface.Addrs()
+		for _, a := range addrs {
+			ipnet, ok := a.(*net.IPNet)
+			if !ok {
+				continue
+			}
+			ip := ipnet.IP
+			if ip.To4() != nil || ip.IsLoopback() || ip.IsMulticast() || ip.IsUnspecified() {
+				continue
+			}
+			// Include global, link-local and legacy site-local (fec0::) addresses:
+			// emulators and some mobile networks only provide the latter.
+			s := ip.String()
+			if ip.IsLinkLocalUnicast() && iface.Name != "" {
+				s += "%" + iface.Name
+			}
+			if !seen[s] {
+				seen[s] = true
+				out = append(out, s)
+			}
+		}
+	}
+	// On Android the Go runtime can miss IPv6 addresses exposed by netlink.
+	// /proc/net/if_inet6 is authoritative on Linux-based systems.
+	if len(out) == 0 {
+		b, ferr := os.ReadFile("/proc/net/if_inet6")
+		if ferr == nil {
+			for _, line := range strings.Split(string(b), "\n") {
+				fields := strings.Fields(line)
+				if len(fields) < 6 {
+					continue
+				}
+				raw, err := hex.DecodeString(fields[0])
+				if err != nil || len(raw) != net.IPv6len {
+					continue
+				}
+				ip := net.IP(raw)
+				if ip.IsLoopback() || ip.IsMulticast() || ip.IsUnspecified() {
+					continue
+				}
+				name := fields[5]
+				s := ip.String()
+				if ip.IsLinkLocalUnicast() && name != "" {
+					s += "%" + name
+				}
+				if !seen[s] {
+					seen[s] = true
+					out = append(out, s)
+				}
+			}
+		}
+	}
 	return out
 }

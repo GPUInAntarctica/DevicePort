@@ -1,4 +1,4 @@
-# Wire protocol (v2, DevicePort v0.1.5)
+# Wire protocol (v2, DevicePort v0.1.6)
 
 Two independent formats are used.
 
@@ -63,5 +63,10 @@ key     = HKDF-SHA256(shared, salt=nil, info="deviceport-v1/overlay-key", len=32
 - Relay frames set the `relayed` flag at send time; receivers do not treat relayed
   packets as proof of a direct path.
 - `welcome` carries `authorized` and the managed `routes` list; `routes` messages update routes live.
+- LAN discovery is an optional out-of-band hint: a small JSON announce is sent to
+  IPv6 multicast group `ff02::1`, UDP port 9977. It carries the sender's ID, name,
+  network name, data-plane UDP port and public key. Receivers combine the observed
+  source address with the announced port and feed the result into the normal
+  encrypted punch path. It never replaces server authorization.
 - Endpoints are IPv6-first `host:port` strings; link-local addresses should include
   a zone and are filtered out by the default endpoint discovery.

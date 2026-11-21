@@ -21,15 +21,20 @@ Build:
 export ANDROID_HOME=$HOME/Android/Sdk
 export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018
 bash android/build.sh
-# => bin/DevicePort-v0.1.5.apk
-adb install -r bin/DevicePort-v0.1.5.apk
+# => bin/DevicePort-v0.1.6.apk
+adb install -r bin/DevicePort-v0.1.6.apk
 ```
 
 The build script uses a gomobile AAR (build it with `gomobile bind -androidapi 35
 -target=android -o deviceport.aar ./mobile`, or set `ANDROID_AAR=/path/to/aar`).
 
-Because `VpnService` must know the local address before connecting, start the server
-with `--subnet 10.66.0.0/24` so the app's `10.66.0.2/24` matches the allocation:
+The app no longer hardcodes `10.66.0.2`. Before establishing the VPN it starts a
+short-lived userspace engine to learn the IP assigned by the server, then recreates
+the `VpnService` with that address and route. The console also displays the device's
+underlay IPv6 addresses (passed from Java, since Android blocks `/proc/net/if_inet6`
+for third-party apps).
+
+For a predictable subnet, start the server with `--subnet 10.66.0.0/24`:
 
 ```bash
 ./dist/deviceport-linux-amd64 server --listen '[::]:9000' --subnet 10.66.0.0/24
@@ -44,7 +49,7 @@ On a real phone, open **Settings** in the app and enter the PC's LAN address, e.
 ```bash
 android emulator create medium_phone
 android emulator start --headless medium_phone
-adb install -r bin/DevicePort-v0.1.5.apk
+adb install -r bin/DevicePort-v0.1.6.apk
 adb shell am start -n com.deviceport.app/.MainActivity
 ```
 

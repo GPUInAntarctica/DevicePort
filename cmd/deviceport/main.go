@@ -38,7 +38,7 @@ func main() {
 	case "node", "client":
 		cli.RunNode(args[1:])
 	case "version", "-V", "--version":
-		fmt.Println("DevicePort v0.1.5")
+		fmt.Println("DevicePort v0.1.6")
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -48,7 +48,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Print(`DevicePort v0.1.5 — IPv6 overlay VPN
+	fmt.Print(`DevicePort v0.1.6 — IPv6 overlay VPN
 
 Usage:
   deviceport server [options]   signaling, relay and admin API

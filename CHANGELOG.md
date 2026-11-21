@@ -2,7 +2,16 @@
 
 All notable changes to this project are documented here.
 
-## v0.1.5.5
+## v0.1.6
+
+- Android no longer hardcodes `10.66.0.2`: it probes the server-assigned IP with a temporary userspace engine, then establishes `VpnService` with the real address and route. Fixes IP conflicts when the Android node is not the first member.
+- IPv6 multicast LAN discovery (`ff02::1`, port 9977): peers on the same link are introduced directly without waiting for the signaling server; disable with `--no-discovery`.
+- The console now shows the node's underlay IPv6 addresses and LAN-discovery status.
+- Server reconnect race fixed: a late disconnect from an old connection no longer removes the newly connected client with the same identity.
+- Windows desktop mode: double-clicking the .exe starts a local network and opens the control panel in the browser; CLI arguments still work.
+- Linux AppImage: registered launcher opens the control panel in a browser on double-click (`packaging/install-linux.sh`); unregistered AppImages pass arguments through a terminal menu.
+
+## v0.1.5
 
 - Single-file executable for Linux and Windows with `server` / `node` subcommands.
 - Per-network member authorization (admin API + `deviceportctl`), with a waiting banner in the console.
@@ -13,11 +22,9 @@ All notable changes to this project are documented here.
 - Stable per-member IP allocation.
 - Android settings page for server, network and device name.
 - ZeroTier-style dark console UI.
-- Windows desktop mode: double-clicking the .exe starts a local network and opens the control panel in the browser; CLI arguments still work.
-- Linux AppImage: registered launcher opens the control panel in a browser on double-click (`packaging/install-linux.sh`); unregistered AppImages pass arguments through a terminal menu.
 - Ready-to-run Linux, Windows and APK assets tracked in `dist/`.
 
-## v0.1.5
+## v0.1
 
 - Initial release.
 - IPv6 underlay overlay with virtual IPv4 allocation (`10.66.x.y/24`).
