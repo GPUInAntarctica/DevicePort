@@ -13,6 +13,7 @@ All notable changes to this project are documented here.
 - Stable per-member IP allocation.
 - Android settings page for server, network and device name.
 - ZeroTier-style dark console UI.
+- Windows desktop mode: double-clicking the .exe starts a local network and opens the control panel in the browser; CLI arguments still work.
 - Linux AppImage: registered launcher opens the control panel in a browser on double-click (`packaging/install-linux.sh`); unregistered AppImages pass arguments through a terminal menu.
 - Ready-to-run Linux, Windows and APK assets tracked in `dist/`.
 

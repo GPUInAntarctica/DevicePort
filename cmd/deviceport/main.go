@@ -12,6 +12,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/GPUInAntarctica/DevicePort/internal/cli"
 )
@@ -19,6 +20,15 @@ import (
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
+		// On Windows a double-clicked console program has no visible window and
+		// exits immediately. Launch the self-contained desktop mode instead.
+		if runtime.GOOS == "windows" {
+			self, err := os.Executable()
+			if err == nil {
+				cli.RunDesktop(self)
+				return
+			}
+		}
 		cli.RunNode(nil)
 		return
 	}

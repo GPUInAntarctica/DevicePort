@@ -23,7 +23,7 @@ No build toolchain needed — grab the assets from the
 |----------|------|-----|
 | Linux x86-64 (AppImage) | `dist/DevicePort-x86_64.AppImage` | `chmod +x ... && ./DevicePort-x86_64.AppImage` — opens a terminal menu |
 | Linux x86-64 (bare binary) | `dist/deviceport-linux-amd64` | `chmod +x deviceport-linux-amd64` then run from a terminal |
-| Windows x86-64 | `dist/deviceport-windows-amd64.exe` | double-click or run from PowerShell |
+| Windows x86-64 | `dist/deviceport-windows-amd64.exe` | double-click opens the control panel in a browser; or run from PowerShell |
 | Android | `dist/DevicePort-v0.1.5.apk` | install on device/emulator |
 
 The Linux and Windows files are a **single executable** containing both roles:
@@ -37,7 +37,9 @@ The Linux and Windows files are a **single executable** containing both roles:
 ```
 
 On Windows: `deviceport-windows-amd64.exe server ...` and `... node ...`.
-`deviceport` without a subcommand defaults to `node`. Run `deviceport help` for details.
+`deviceport` without a subcommand defaults to `node` (on Linux); on Windows a
+double-click with no arguments starts a local demo network and opens the control
+panel in your browser. Run `deviceport help` for details.
 
 The **AppImage is recommended on the desktop**. Register it once with
 `bash packaging/install-linux.sh`, then double-click the **DevicePort** launcher — it
@@ -122,9 +124,9 @@ Electron 桌面端和 Android VPN 应用。
 
 | 平台 | 文件 |
 |------|------|
-| Linux x86-64（推荐） | `dist/DevicePort-x86_64.AppImage`（双击打开终端菜单） |
+| Linux x86-64（推荐） | `dist/DevicePort-x86_64.AppImage`（先运行安装脚本，再双击打开浏览器控制面板） |
 | Linux x86-64 | `dist/deviceport-linux-amd64`（命令行） |
-| Windows x86-64 | `dist/deviceport-windows-amd64.exe` |
+| Windows x86-64 | `dist/deviceport-windows-amd64.exe`（双击打开浏览器控制面板） |
 | Android | `dist/DevicePort-v0.1.5.apk` |
 
 Linux/Windows 是**单文件可执行文件**，包含两个子命令：

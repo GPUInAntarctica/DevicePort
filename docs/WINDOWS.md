@@ -1,5 +1,20 @@
 # Windows guide / Windows 指南
 
+## Double-click / 双击
+
+`deviceport-windows-amd64.exe` is a console program, so a plain double-click used to
+flash a window and exit. It now has a desktop mode: **double-clicking it with no
+arguments** starts a local signaling server and a userspace-TUN node, opens the
+control panel in your default browser at `http://127.0.0.1:9050`, and keeps running.
+No administrator rights or Wintun driver are needed for this demo mode.
+
+To use a real network, run it from PowerShell / CMD with arguments:
+
+```powershell
+.\deviceport-windows-amd64.exe server --listen "[::]:9000" --subnet 10.66.0.0/24
+.\deviceport-windows-amd64.exe node --server "[::1]:9000" --name alice --tun wintun
+```
+
 ## Real Windows (Wintun)
 
 The Windows client uses [Wintun](https://www.wintun.net/) for its TUN adapter.
