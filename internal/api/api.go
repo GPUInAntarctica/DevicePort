@@ -19,11 +19,25 @@ var webFS embed.FS
 
 // Server serves the GUI and control API.
 type Server struct {
-	node *node.Node
+	node  *node.Node
+	store *networkStore
 }
 
 // New creates an API server bound to a node.
-func New(n *node.Node) *Server { return &Server{node: n} }
+func New(n *node.Node) *Server {
+	s := &Server{node: n, store: newNetworkStore()}
+	// Make the node's current network immediately switchable, even on a fresh
+	// install where the saved-network file does not exist yet.
+	s.store.mu.Lock()
+	if len(s.store.networks) == 0 {
+		cur := s.currentNetwork(n.Status())
+		cur.Current = false
+		s.store.networks = []Network{cur}
+		s.store.save()
+	}
+	s.store.mu.Unlock()
+	return s
+}
 
 // Handler returns the HTTP handler.
 func (s *Server) Handler() http.Handler {
@@ -32,6 +46,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/status", s.status)
 	mux.HandleFunc("/api/connect", s.connect)
 	mux.HandleFunc("/api/send", s.send)
+	mux.HandleFunc("/api/networks", s.networks)
+	mux.HandleFunc("/api/networks/join", s.joinNetwork)
+	mux.HandleFunc("/api/networks/switch", s.switchNetwork)
+	mux.HandleFunc("/api/networks/delete", s.deleteNetwork)
 	return mux
 }
 

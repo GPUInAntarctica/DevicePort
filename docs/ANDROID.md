@@ -21,8 +21,8 @@ Build:
 export ANDROID_HOME=$HOME/Android/Sdk
 export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018
 bash android/build.sh
-# => bin/DevicePort-v0.1.6.apk
-adb install -r bin/DevicePort-v0.1.6.apk
+# => bin/DevicePort-1.2.6.5.apk
+adb install -r bin/DevicePort-1.2.6.5.apk
 ```
 
 The build script uses a gomobile AAR (build it with `gomobile bind -androidapi 35
@@ -49,7 +49,7 @@ On a real phone, open **Settings** in the app and enter the PC's LAN address, e.
 ```bash
 android emulator create medium_phone
 android emulator start --headless medium_phone
-adb install -r bin/DevicePort-v0.1.6.apk
+adb install -r bin/DevicePort-1.2.6.5.apk
 adb shell am start -n com.deviceport.app/.MainActivity
 ```
 

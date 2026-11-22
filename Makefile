@@ -1,9 +1,9 @@
-# DevicePort v0.1.6 build helpers
+# DevicePort 1.2.6.5 build helpers
 GO ?= go
 # Go 1.23 is used for the Windows binary because Go 1.26's UDP socket path
 # fails under Wine (WSAEOPNOTSUPP). Override GO_WIN if it is not on PATH.
 GO_WIN ?= $(GO)
-VERSION := v0.1.6
+VERSION := 1.2.6.5
 BIN := bin
 DIST := dist
 

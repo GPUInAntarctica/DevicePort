@@ -136,6 +136,7 @@ type Node struct {
 	logger *log.Logger
 
 	udp       *net.UDPConn
+	udpMu     sync.RWMutex // guards udp so it can be replaced on network switch
 	control   net.Conn
 	controlMu sync.Mutex
 
@@ -154,7 +155,9 @@ type Node struct {
 
 	closed        chan struct{}
 	closeOne      sync.Once
-	wg            sync.WaitGroup
+	wg            sync.WaitGroup // control, udp and maintenance loops
+	tunWG         sync.WaitGroup // tun loop outlives a network switch
+	tunStarted    bool
 	running       atomic.Bool
 	stopDiscovery func()
 
@@ -210,7 +213,39 @@ func New(ident *crypto.Identity, dev tun.Device, opts Options) (*Node, error) {
 }
 
 // UDPAddr returns the bound UDP address (useful for tests).
-func (n *Node) UDPAddr() net.Addr { return n.udp.LocalAddr() }
+func (n *Node) UDPAddr() net.Addr {
+	n.udpMu.RLock()
+	defer n.udpMu.RUnlock()
+	return n.udp.LocalAddr()
+}
+
+func (n *Node) udpPort() int {
+	n.udpMu.RLock()
+	defer n.udpMu.RUnlock()
+	a, ok := n.udp.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return 0
+	}
+	return a.Port
+}
+
+func (n *Node) writeToUDP(b []byte, addr *net.UDPAddr) (int, error) {
+	n.udpMu.RLock()
+	defer n.udpMu.RUnlock()
+	if n.udp == nil {
+		return 0, errors.New("udp socket closed")
+	}
+	return n.udp.WriteToUDP(b, addr)
+}
+
+func (n *Node) udpString() string {
+	n.udpMu.RLock()
+	defer n.udpMu.RUnlock()
+	if n.udp == nil {
+		return "—"
+	}
+	return n.udp.LocalAddr().String()
+}
 
 // Start connects to the signaling server and launches all worker loops.
 func (n *Node) Start() error {
@@ -219,14 +254,15 @@ func (n *Node) Start() error {
 		return fmt.Errorf("connect signaling server %s: %w", n.opts.Server, err)
 	}
 	n.control = conn
+	port := n.udpPort()
 	hello := &protocol.Message{
 		Type:      protocol.MsgHello,
 		ID:        n.ident.ID(),
 		Name:      n.opts.Name,
 		PublicKey: n.ident.PublicKey(),
 		Network:   n.opts.Network,
-		Port:      n.udp.LocalAddr().(*net.UDPAddr).Port,
-		Endpoints: localEndpoints(n.udp.LocalAddr().(*net.UDPAddr).Port),
+		Port:      port,
+		Endpoints: localEndpoints(port),
 	}
 	if err := protocol.WriteMessage(conn, hello); err != nil {
 		conn.Close()
@@ -234,39 +270,112 @@ func (n *Node) Start() error {
 	}
 
 	n.running.Store(true)
-	n.wg.Add(4)
+	n.wg.Add(3)
 	go n.controlLoop()
 	go n.udpLoop()
-	go n.tunLoop()
 	go n.maintenanceLoop()
+	// The TUN device is kept open across a network switch, so its read loop is
+	// started only once. It reads n.udp and the peer maps dynamically.
+	if !n.tunStarted {
+		n.tunStarted = true
+		n.tunWG.Add(1)
+		go n.tunLoop()
+	}
 	if n.opts.LANDiscovery {
 		n.stopDiscovery = n.startDiscovery()
 		n.logger.Printf("LAN discovery enabled (IPv6 multicast port %d)", LANDiscoveryPort)
 	}
-	n.logger.Printf("node %s started (udp %s, server %s)", short(n.ident.ID()), n.udp.LocalAddr(), n.opts.Server)
+	n.logger.Printf("node %s started (udp %s, server %s, network %s)",
+		short(n.ident.ID()), n.udpString(), n.opts.Server, n.opts.Network)
 	return nil
+}
+
+// Reconnect stops the current signaling/UDP workers and connects to a different
+// controller or network while keeping the same identity and TUN device. This
+// lets the GUI join or create another network without restarting the app.
+func (n *Node) Reconnect(server, network string) error {
+	server = strings.TrimSpace(server)
+	if server == "" {
+		return errors.New("controller address is required")
+	}
+	network = strings.TrimSpace(network)
+	if network == "" {
+		network = "default"
+	}
+	if n.running.Load() {
+		n.stopWorkers()
+	}
+
+	// Reset per-network state while the TUN loop is the only remaining reader.
+	n.mu.Lock()
+	n.peers = make(map[string]*Peer)
+	n.byIP = make(map[string]*Peer)
+	n.byShortID = make(map[string]*Peer)
+	n.pings = make(map[uint64]time.Time)
+	n.routes = nil
+	n.authorized = false
+	n.selfIP = ""
+	n.prefix = ""
+	n.mu.Unlock()
+
+	udp, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv6zero, Port: 0})
+	if err != nil {
+		udp, err = net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+		if err != nil {
+			return fmt.Errorf("listen udp: %w", err)
+		}
+	}
+	n.udpMu.Lock()
+	old := n.udp
+	n.udp = udp
+	n.udpMu.Unlock()
+	if old != nil {
+		_ = old.Close()
+	}
+	n.closed = make(chan struct{})
+	n.closeOne = sync.Once{}
+	n.stopDiscovery = nil
+	n.opts.Server = server
+	n.opts.Network = network
+	n.started = time.Now()
+	return n.Start()
+}
+
+// stopWorkers stops the control, UDP, maintenance and discovery loops. It does
+// not close the TUN device, so Reconnect can reuse it.
+func (n *Node) stopWorkers() {
+	n.running.Store(false)
+	select {
+	case <-n.closed:
+	default:
+		close(n.closed)
+	}
+	if n.stopDiscovery != nil {
+		n.stopDiscovery()
+		n.stopDiscovery = nil
+	}
+	n.controlMu.Lock()
+	if n.control != nil {
+		_ = n.control.Close()
+	}
+	n.controlMu.Unlock()
+	n.udpMu.RLock()
+	if n.udp != nil {
+		_ = n.udp.Close()
+	}
+	n.udpMu.RUnlock()
+	n.wg.Wait()
 }
 
 // Close stops all loops and releases resources.
 func (n *Node) Close() error {
 	var err error
 	n.closeOne.Do(func() {
-		n.running.Store(false)
-		close(n.closed)
-		if n.stopDiscovery != nil {
-			n.stopDiscovery()
-			n.stopDiscovery = nil
-		}
-		if n.control != nil {
-			n.control.Close()
-		}
-		if n.udp != nil {
-			n.udp.Close()
-		}
+		n.stopWorkers()
 		if n.dev != nil {
 			err = n.dev.Close()
 		}
-		n.wg.Wait()
+		n.tunWG.Wait()
 	})
 	return err
 }
@@ -497,7 +606,13 @@ func (n *Node) udpLoop() {
 	defer n.wg.Done()
 	buf := make([]byte, bufferSize)
 	for {
-		nb, src, err := n.udp.ReadFromUDP(buf)
+		n.udpMu.RLock()
+		udp := n.udp
+		n.udpMu.RUnlock()
+		if udp == nil {
+			return
+		}
+		nb, src, err := udp.ReadFromUDP(buf)
 		if err != nil {
 			if n.running.Load() {
 				n.logger.Printf("udp read: %v", err)
@@ -619,7 +734,7 @@ func acceptSeq(p *Peer, seq uint64) bool {
 // tunLoop reads raw IPv4 packets from the virtual interface and forwards them
 // to the peer that owns the destination address.
 func (n *Node) tunLoop() {
-	defer n.wg.Done()
+	defer n.tunWG.Done()
 	buf := make([]byte, bufferSize)
 	for {
 		nb, err := n.dev.Read(buf)
@@ -718,7 +833,7 @@ func (n *Node) sendFrame(p *Peer, typ byte, payload []byte, ep string, relayed b
 		if err != nil {
 			return err
 		}
-		_, err = n.udp.WriteToUDP(frame, addr)
+		_, err = n.writeToUDP(frame, addr)
 		if err != nil {
 			n.logger.Printf("direct send to %s failed: %v", ep, err)
 		}
@@ -855,7 +970,7 @@ func (n *Node) Status() Status {
 		Prefix:       n.prefix,
 		Network:      n.opts.Network,
 		Server:       n.opts.Server,
-		UDPAddr:      n.udp.LocalAddr().String(),
+		UDPAddr:      n.udpString(),
 		IPv6:         n.displayIPv6(),
 		LANDiscovery: n.opts.LANDiscovery,
 		Encryption:   "X25519 + HKDF-SHA256 + AES-256-GCM",

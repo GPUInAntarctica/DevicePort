@@ -61,5 +61,5 @@ DevicePort 分为三层：控制面（节点到服务器的 TCP 连接）、数�
 - Peer identity is the fingerprint of the X25519 public key, so the server cannot
   impersonate a peer without detection (out-of-band ID verification is recommended).
 - Known limitations: no forward secrecy (static keys), no replay protection, no
-  global key revocation. These are acceptable for v0.1.6 but must be addressed before
+  global key revocation. These are acceptable for 1.2.6.5 but must be addressed before
   production use.

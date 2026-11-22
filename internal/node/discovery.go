@@ -46,9 +46,7 @@ func (n *Node) startDiscovery() func() {
 		return func() {}
 	}
 	port := 0
-	if a, ok := n.udp.LocalAddr().(*net.UDPAddr); ok {
-		port = a.Port
-	}
+	port = n.udpPort()
 	msg := lanMessage{
 		Type:      lanAnnounce,
 		ID:        n.ident.ID(),

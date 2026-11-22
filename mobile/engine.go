@@ -21,7 +21,7 @@ import (
 )
 
 // Version is the DevicePort release string.
-func Version() string { return "v0.1.6" }
+func Version() string { return "1.2.6.5" }
 
 // NewIdentity generates a fresh X25519 private key and returns it as hex.
 func NewIdentity() (string, error) {

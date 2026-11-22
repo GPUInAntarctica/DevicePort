@@ -8,7 +8,7 @@
   :root{
     --bg:#1b1e23; --side:#15181c; --panel:#22262c; --panel2:#1e2228;
     --line:#343a43; --soft:#2b3139; --text:#d5dbe3; --mut:#8b95a2; --dim:#606a76;
-    --blue:#2f8fea; --blue-h:#3b9cf7; --green:#4cc38a; --amber:#e0a84c;
+    --blue:#2f8fea; --blue-h:#3b9cf7; --green:#4cc38a; --amber:#e0a84c; --red:#d96b6b;
     --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
   }
   *{box-sizing:border-box}
@@ -24,12 +24,12 @@
   .brand .logo i{transform:rotate(-45deg);font:700 10px/1 var(--mono);color:var(--blue);font-style:normal}
   .brand b{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
   .brand small{display:block;color:var(--dim);font:10px/1.2 var(--mono);letter-spacing:.04em}
-  nav{padding:14px 0;flex:1}
-  nav a{display:flex;align-items:center;gap:11px;padding:9px 18px;color:var(--mut);font-size:12.5px;border-left:2px solid transparent;cursor:pointer}
-  nav a:hover{color:var(--text);background:rgba(255,255,255,.025)}
-  nav a.on{color:#fff;border-left-color:var(--blue);background:rgba(47,143,234,.08)}
-  nav a .ic{width:14px;height:14px;border:1px solid currentColor;border-radius:2px;opacity:.65}
-  nav a.on .ic{border-color:var(--blue);opacity:1}
+  nav{padding:14px 0;flex:1;display:flex;flex-direction:column;gap:2px}
+  nav button{display:flex;align-items:center;gap:11px;width:100%;padding:9px 18px;color:var(--mut);font:inherit;font-size:12.5px;text-align:left;border:0;border-left:2px solid transparent;background:none;cursor:pointer}
+  nav button:hover{color:var(--text);background:rgba(255,255,255,.04)}
+  nav button.on{color:#fff;border-left-color:var(--blue);background:rgba(47,143,234,.12)}
+  nav button .ic{width:14px;height:14px;border:1px solid currentColor;border-radius:2px;opacity:.65}
+  nav button.on .ic{border-color:var(--blue);opacity:1}
   .side-foot{padding:14px 18px;border-top:1px solid var(--line);font:10px/1.6 var(--mono);color:var(--dim)}
   .side-foot b{color:var(--mut);font-weight:400}
 
@@ -44,6 +44,8 @@
   .lang button{background:none;border:0;color:var(--dim);font:inherit;font-size:11.5px;cursor:pointer;padding:3px 0}
   .lang button.on{color:var(--blue)}
   .content{padding:24px;max-width:1180px}
+  section[data-view]{display:none}
+  section[data-view].on{display:block}
 
   .sec{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px}
   .sec h2{margin:0;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
@@ -52,16 +54,24 @@
   .sec.mt{margin-top:30px}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:3px}
-  .facts{display:grid;grid-template-columns:repeat(4,1fr)}
-  .fact{padding:16px 18px;border-right:1px solid var(--line)}
+  .facts{display:grid;grid-template-columns:repeat(3,1fr)}
+  .fact{padding:16px 18px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
   .fact:last-child{border-right:0}
   .fact label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:8px}
-  .fact .v{font:12.5px/1.5 var(--mono);color:var(--text);word-break:break-all}
-  .fact .v.small{font-size:11.5px;line-height:1.45;color:#9fb2c9}
+  .fact .v{font:12.5px/1.5 var(--mono);color:var(--text);word-break:break-all;min-height:19px}
+  .fact .v.small{font-size:11.5px;line-height:1.6;color:#9fb2c9}
   .fact .v.blue{color:var(--blue)}
+  .ip-row{display:flex;align-items:center;gap:6px;justify-content:space-between}
+  .copy{background:none;border:1px solid var(--line);color:var(--dim);border-radius:2px;font:10px var(--mono);padding:1px 5px;cursor:pointer;white-space:nowrap}
+  .copy:hover{color:var(--blue);border-color:var(--blue)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px}
+  .stat{padding:14px 18px;text-align:center;border-right:1px solid var(--line)}
+  .stat:last-child{border-right:0}
+  .stat b{display:block;font:600 22px/1.2 var(--mono);color:#eef2f6}
+  .stat span{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
   .tbl-wrap{overflow-x:auto}
-  table{width:100%;border-collapse:collapse;min-width:760px}
+  table{width:100%;border-collapse:collapse;min-width:720px}
   thead th{background:var(--panel2);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:600}
   tbody td{padding:12px 14px;border-bottom:1px solid var(--soft);font-size:12px;vertical-align:middle;white-space:nowrap}
   tbody tr:last-child td{border-bottom:0}
@@ -76,47 +86,58 @@
   .path.relay{color:var(--amber);border-color:rgba(224,168,76,.3);background:rgba(224,168,76,.08)}
   .num{font-family:var(--mono);color:var(--mut);font-size:11.5px}
   .empty{padding:38px;text-align:center;color:var(--dim);font-size:12px}
-  .dots{color:var(--dim);cursor:pointer;font-size:16px;line-height:1}
 
   .ops{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .op{padding:16px 18px}
   .op h3{margin:0 0 6px;font-size:12.5px;font-weight:600;color:#e6ebf1}
   .op p{margin:0 0 14px;font-size:11.5px;color:var(--mut);line-height:1.6}
-  .row{display:flex;gap:8px;flex-wrap:wrap}
-  input{flex:1;min-width:120px;background:var(--bg);border:1px solid var(--line);border-radius:2px;color:var(--text);padding:8px 10px;font:12px var(--mono)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input{flex:1;min-width:130px;background:var(--bg);border:1px solid var(--line);border-radius:2px;color:var(--text);padding:8px 10px;font:12px var(--mono)}
   input::placeholder{color:#626c78}
   input:focus{outline:none;border-color:var(--blue)}
-  button.primary{background:var(--blue);color:#fff;border:0;border-radius:2px;padding:0 14px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer}
+  button.primary{background:var(--blue);color:#fff;border:0;border-radius:2px;padding:8px 14px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
   button.primary:hover{background:var(--blue-h)}
-  .note{margin-top:12px;font-size:10.5px;color:var(--dim);font-family:var(--mono)}
+  button.ghost{background:none;color:var(--mut);border:1px solid var(--line);border-radius:2px;padding:6px 10px;font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}
+  button.ghost:hover{color:var(--blue);border-color:var(--blue)}
+  button.ghost.danger:hover{color:var(--red);border-color:var(--red)}
+  .note{margin-top:12px;font-size:10.5px;color:var(--dim);font-family:var(--mono);line-height:1.6}
   #msg{min-height:15px;margin-top:10px;font-size:11.5px;color:var(--green)}
   .banner{display:none;margin:0 0 16px;padding:12px 16px;background:rgba(224,168,76,.08);border:1px solid rgba(224,168,76,.35);border-left:3px solid var(--amber);border-radius:2px;color:var(--amber);font-size:12px}
   .banner.show{display:block}
-  .routes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font:11px var(--mono);color:var(--mut)}
+  .routes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font:11px var(--mono);color:var(--mut)}
   .routes .r{border:1px solid var(--line);border-radius:2px;padding:4px 8px;background:var(--panel2)}
   .routes .r b{color:var(--blue);font-weight:400}
-  .sub{display:block;font:10px var(--mono);color:var(--dim);margin-top:2px}
+  .sub{display:block;font:10px var(--mono);color:var(--dim);margin-top:2px;white-space:normal}
   .rtt{font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+  .net-item{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--soft)}
+  .net-item:last-child{border-bottom:0}
+  .net-item .info{flex:1;min-width:0}
+  .net-item .info b{font-size:12.5px;color:#eef2f6;font-weight:500}
+  .net-item .info span{display:block;font:10.5px var(--mono);color:var(--dim);margin-top:2px;word-break:break-all}
+  .tag{font:10px var(--mono);padding:2px 7px;border:1px solid rgba(76,195,138,.3);color:var(--green);background:rgba(76,195,138,.08);border-radius:2px}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:10px 16px;padding:16px 18px;font-size:12px}
+  .kv .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .kv .val{font-family:var(--mono);word-break:break-all;color:#e6ebf1}
   footer{padding:20px 24px 30px;color:var(--dim);font:10.5px var(--mono);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  @media(max-width:640px){.side{display:none}.main{margin-left:0}.facts{grid-template-columns:repeat(2,1fr)}.ops{grid-template-columns:1fr}}
+  @media(max-width:760px){.side{width:60px;flex-basis:60px}.brand b,.brand small,nav button span:last-child,.side-foot{display:none}nav button{justify-content:center;padding:10px 0}.main{margin-left:60px}.facts,.stats{grid-template-columns:repeat(2,1fr)}.ops{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand"><div class="logo"><i>DP</i></div><div><b>DevicePort</b><small>v0.1.6</small></div></div>
-    <nav>
-      <a><span class="ic"></span><span data-i18n="nav_overview">Overview</span></a>
-      <a class="on"><span class="ic"></span><span data-i18n="nav_net">Networks</span></a>
-      <a><span class="ic"></span><span data-i18n="nav_members">Members</span></a>
-      <a><span class="ic"></span><span data-i18n="nav_settings">Settings</span></a>
+    <div class="brand"><div class="logo"><i>DP</i></div><div><b>DevicePort</b><small>1.2.6.5</small></div></div>
+    <nav id="nav">
+      <button data-view="overview" class="on"><span class="ic"></span><span data-i18n="nav_overview">Overview</span></button>
+      <button data-view="networks"><span class="ic"></span><span data-i18n="nav_net">Networks</span></button>
+      <button data-view="members"><span class="ic"></span><span data-i18n="nav_members">Members</span></button>
+      <button data-view="settings"><span class="ic"></span><span data-i18n="nav_settings">Settings</span></button>
     </nav>
     <div class="side-foot"><b>NODE</b><br><span id="sideid">—</span></div>
   </aside>
 
   <div class="main">
     <div class="top">
-      <span class="crumb">DevicePort / <b data-i18n="crumb">Networks</b> / <b id="crumbnet">default</b></span>
+      <span class="crumb">DevicePort / <b id="crumbview">Overview</b> / <b id="crumbnet">default</b></span>
       <div class="top-r">
         <span class="live"><i></i><span data-i18n="live">ONLINE</span></span>
         <div class="lang"><button id="en">EN</button><button id="zh">中文</button></div>
@@ -124,55 +145,111 @@
     </div>
 
     <div class="content">
-      <div id="authbanner" class="banner" data-i18n="auth_wait">This member is awaiting authorization. Ask the network administrator to approve your node ID.</div>
-
-      <div class="sec"><h2 data-i18n="sec_net">Network</h2><span class="badge" data-i18n="managed">MANAGED</span><span class="rule"></span></div>
-      <div class="card facts">
-        <div class="fact"><label data-i18n="f_netid">Network ID</label><div class="v blue" id="netid">—</div></div>
-        <div class="fact"><label data-i18n="f_subnet">IPv4 subnet</label><div class="v" id="subnet">—</div></div>
-        <div class="fact"><label data-i18n="f_addr">My address</label><div class="v" id="ip">—</div></div>
-        <div class="fact"><label data-i18n="f_ipv6">Underlay IPv6</label><div class="v small" id="ipv6">—</div></div>
-        <div class="fact"><label data-i18n="f_server">Controller</label><div class="v" id="srv">—</div></div>
-        <div class="fact"><label data-i18n="f_discovery">LAN discovery</label><div class="v" id="discovery">—</div></div>
-      </div>
-      <div id="routes" class="routes"></div>
-
-      <div class="sec mt"><h2 data-i18n="sec_members">Members</h2><span class="badge" id="pcount">0</span><span class="rule"></span></div>
-      <div class="card tbl-wrap">
-        <table>
-          <thead><tr>
-            <th data-i18n="th_name">Name</th><th data-i18n="th_id">ID</th><th data-i18n="th_ip">IP</th>
-            <th data-i18n="th_state">Status</th><th data-i18n="th_path">Path</th>
-            <th data-i18n="th_rtt">RTT</th><th data-i18n="th_seen">Last seen</th>
-            <th data-i18n="th_io">Tx / Rx</th><th></th>
-          </tr></thead>
-          <tbody id="peers"></tbody>
-        </table>
-      </div>
-
-      <div class="sec mt"><h2 data-i18n="sec_ops">Operations</h2><span class="rule"></span></div>
-      <div class="ops">
-        <div class="card op">
-          <h3 data-i18n="connect">Add member by ID</h3>
-          <p data-i18n="connect_hint">Introduce another node manually. Members on the same network are normally added automatically.</p>
-          <div class="row"><input id="cid" data-i18n-ph="cidph" placeholder="Node ID" maxlength="32"><button class="primary" data-i18n="btn_connect">Connect</button></div>
-          <div class="note" data-i18n="connect_note">Authenticated with your X25519 identity</div>
+      <!-- Overview -->
+      <section data-view="overview" class="on">
+        <div id="authbanner" class="banner" data-i18n="auth_wait">This member is awaiting authorization. Ask the network administrator to approve your node ID.</div>
+        <div class="sec"><h2 data-i18n="sec_net">Network</h2><span class="badge" data-i18n="managed">MANAGED</span><span class="rule"></span></div>
+        <div class="card facts">
+          <div class="fact"><label data-i18n="f_netid">Network ID</label><div class="v blue" id="netid">—</div></div>
+          <div class="fact"><label data-i18n="f_subnet">IPv4 subnet</label><div class="v" id="subnet">—</div></div>
+          <div class="fact"><label data-i18n="f_addr">My address</label><div class="v" id="ip">—</div></div>
+          <div class="fact"><label data-i18n="f_ipv6">Underlay IPv6</label><div class="v small" id="ipv6">—</div></div>
+          <div class="fact"><label data-i18n="f_server">Controller</label><div class="v" id="srv">—</div></div>
+          <div class="fact"><label data-i18n="f_discovery">LAN discovery</label><div class="v" id="discovery">—</div></div>
         </div>
-        <div class="card op">
-          <h3 data-i18n="sendtitle">Diagnostic · ICMP echo</h3>
-          <p data-i18n="send_hint">Inject a raw IPv4 packet into the overlay and route it to a member.</p>
-          <div class="row">
-            <input id="dst" data-i18n-ph="dstph" placeholder="Destination IP" value="">
-            <input id="txt" data-i18n-ph="txtph" placeholder="Payload" value="hello from DevicePort">
-            <button class="primary" data-i18n="btn_send">Send</button>
+        <div class="stats">
+          <div class="stat card"><b id="st-peers">0</b><span data-i18n="st_peers">Members</span></div>
+          <div class="stat card"><b id="st-direct">0</b><span data-i18n="st_direct">Direct links</span></div>
+          <div class="stat card"><b id="st-online">0</b><span data-i18n="st_online">Online now</span></div>
+        </div>
+        <div id="routes" class="routes"></div>
+
+        <div class="sec mt"><h2 data-i18n="sec_ops">Operations</h2><span class="rule"></span></div>
+        <div class="ops">
+          <div class="card op">
+            <h3 data-i18n="connect">Add member by ID</h3>
+            <p data-i18n="connect_hint">Introduce another node manually. Members on the same network are normally added automatically.</p>
+            <div class="row"><input id="cid" data-i18n-ph="cidph" placeholder="Node ID" maxlength="32"><button class="primary" data-i18n="btn_connect">Connect</button></div>
+            <div class="note" data-i18n="connect_note">Authenticated with your X25519 identity</div>
           </div>
-          <div class="note" data-i18n="send_note">AES-256-GCM encrypted end to end</div>
+          <div class="card op">
+            <h3 data-i18n="sendtitle">Diagnostic · ICMP echo</h3>
+            <p data-i18n="send_hint">Inject a raw IPv4 packet into the overlay and route it to a member.</p>
+            <div class="row">
+              <input id="dst" data-i18n-ph="dstph" placeholder="Destination IP" value="">
+              <input id="txt" data-i18n-ph="txtph" placeholder="Payload" value="hello from DevicePort">
+              <button class="primary" data-i18n="btn_send">Send</button>
+            </div>
+            <div class="note" data-i18n="send_note">AES-256-GCM encrypted end to end</div>
+          </div>
         </div>
-      </div>
-      <div id="msg"></div>
+        <div id="msg"></div>
+      </section>
+
+      <!-- Networks -->
+      <section data-view="networks">
+        <div class="sec"><h2 data-i18n="sec_current">Current network</h2><span class="rule"></span></div>
+        <div class="card facts">
+          <div class="fact"><label data-i18n="f_netid">Network ID</label><div class="v blue" id="cur-name">—</div></div>
+          <div class="fact"><label data-i18n="f_ctrladdr">Controller address</label><div class="v" id="cur-server">—</div></div>
+          <div class="fact"><label data-i18n="f_ipv6">Underlay IPv6</label><div class="v small" id="cur-ipv6">—</div></div>
+        </div>
+
+        <div class="sec mt"><h2 data-i18n="sec_join">Join / create a network</h2><span class="rule"></span></div>
+        <div class="card op">
+          <p data-i18n="join_hint">Enter an IPv6 address of the controller. The node keeps its identity and tunnel, and reconnects to that network immediately.</p>
+          <div class="row">
+            <input id="net-name" data-i18n-ph="netnameph" placeholder="Network name (default)" maxlength="64">
+            <input id="net-ipv6" data-i18n-ph="netipph" placeholder="[2001:db8::1]:9000 or fe80::1%eth0" maxlength="128">
+            <button class="primary" id="btn-join" data-i18n="btn_join">Join / Create</button>
+          </div>
+          <div class="note" data-i18n="join_note">Leave the port empty to use 9000. A link-local address needs a zone, e.g. fe80::1%wlan0.</div>
+        </div>
+
+        <div class="sec mt"><h2 data-i18n="sec_saved">Saved networks</h2><span class="badge" id="netcount">0</span><span class="rule"></span></div>
+        <div class="card" id="network-list"><div class="empty" data-i18n="loading">Loading…</div></div>
+        <div id="netmsg"></div>
+      </section>
+
+      <!-- Members -->
+      <section data-view="members">
+        <div class="sec"><h2 data-i18n="sec_members">Members</h2><span class="badge" id="pcount">0</span><span class="rule"></span></div>
+        <div class="card tbl-wrap">
+          <table>
+            <thead><tr>
+              <th data-i18n="th_name">Name</th><th data-i18n="th_id">ID</th><th data-i18n="th_ip">IP</th>
+              <th data-i18n="th_state">Status</th><th data-i18n="th_path">Path</th>
+              <th data-i18n="th_rtt">RTT</th><th data-i18n="th_seen">Last seen</th>
+              <th data-i18n="th_io">Tx / Rx</th>
+            </tr></thead>
+            <tbody id="peers"></tbody>
+          </table>
+        </div>
+        <div class="note" data-i18n="members_note">Direct links are established automatically over IPv6; other members use the server relay.</div>
+      </section>
+
+      <!-- Settings -->
+      <section data-view="settings">
+        <div class="sec"><h2 data-i18n="sec_settings">Settings</h2><span class="rule"></span></div>
+        <div class="card kv">
+          <div class="k" data-i18n="set_language">Language</div>
+          <div class="val"><button class="ghost" id="set-en">English</button> <button class="ghost" id="set-zh">中文</button></div>
+          <div class="k" data-i18n="set_nodeid">Node ID</div>
+          <div class="val"><span id="set-id">—</span> <button class="copy" data-copy="set-id" data-i18n="copy">Copy</button></div>
+          <div class="k" data-i18n="f_ipv6">Underlay IPv6</div>
+          <div class="val" id="set-ipv6">—</div>
+          <div class="k" data-i18n="f_discovery">LAN discovery</div>
+          <div class="val" id="set-discovery">—</div>
+          <div class="k" data-i18n="set_version">Version</div>
+          <div class="val">1.2.6.5</div>
+          <div class="k" data-i18n="set_crypto">Encryption</div>
+          <div class="val">X25519 / HKDF-SHA256 / AES-256-GCM</div>
+        </div>
+        <div class="note" data-i18n="set_note">The web console is local to this device. Only this node can change its settings; network authorization is handled by the controller administrator.</div>
+      </section>
     </div>
     <footer>
-      <span>DEVICEPORT v0.1.6 · X25519 / HKDF-SHA256 / AES-256-GCM</span>
+      <span>DEVICEPORT 1.2.6.5 · X25519 / HKDF-SHA256 / AES-256-GCM</span>
       <span data-i18n="footer">IPv6 UNDERLAY · VIRTUAL IPv4</span>
     </footer>
   </div>
@@ -181,29 +258,49 @@
 <script>
 const I18N={
  en:{
-  nav_overview:"Overview",nav_net:"Networks",nav_members:"Members",nav_settings:"Settings",crumb:"Networks",
+  nav_overview:"Overview",nav_net:"Networks",nav_members:"Members",nav_settings:"Settings",crumb_networks:"Networks",crumb_members:"Members",crumb_settings:"Settings",crumb_overview:"Overview",
   live:"ONLINE",sec_net:"Network",managed:"MANAGED",f_netid:"Network ID",f_subnet:"IPv4 subnet",f_addr:"My address",f_ipv6:"Underlay IPv6",f_discovery:"LAN discovery",f_server:"Controller",
-  sec_members:"Members",th_name:"Name",th_id:"ID",th_ip:"IP",th_state:"Status",th_ep:"Physical address",th_path:"Path",th_io:"Tx / Rx",
-  th_rtt:"RTT",th_seen:"Last seen",online:"online",offline:"offline",ago:"ago",never:"never",routes:"Managed routes",
+  sec_members:"Members",th_name:"Name",th_id:"ID",th_ip:"IP",th_state:"Status",th_path:"Path",th_io:"Tx / Rx",th_rtt:"RTT",th_seen:"Last seen",
+  online:"online",offline:"offline",ago:"ago",never:"never",routes:"Managed routes",
   auth_wait:"This member is awaiting authorization. Ask the network administrator to approve your node ID.",
   sec_ops:"Operations",connect:"Add member by ID",connect_hint:"Introduce another node manually. Members on the same network are normally added automatically.",
   cidph:"Node ID",btn_connect:"Connect",connect_note:"Authenticated with your X25519 identity",
   sendtitle:"Diagnostic · ICMP echo",send_hint:"Inject a raw IPv4 packet into the overlay and route it to a member.",
   dstph:"Destination IP",txtph:"Payload",btn_send:"Send",send_note:"AES-256-GCM encrypted end to end",
   nopeers:"No members yet",direct:"DIRECT",relay:"RELAY",sent:"Packet sent",connsent:"Connect request sent",
+  st_peers:"Members",st_direct:"Direct links",st_online:"Online now",
+  sec_current:"Current network",f_ctrladdr:"Controller address",sec_join:"Join / create a network",
+  join_hint:"Enter an IPv6 address of the controller. The node keeps its identity and tunnel, and reconnects to that network immediately.",
+  netnameph:"Network name (default)",netipph:"[2001:db8::1]:9000 or fe80::1%eth0",btn_join:"Join / Create",
+  join_note:"Leave the port empty to use 9000. A link-local address needs a zone, e.g. fe80::1%wlan0.",
+  sec_saved:"Saved networks",loading:"Loading…",current:"CURRENT",btn_switch:"Switch",btn_delete:"Delete",
+  joined:"Joined network",switched:"Switched network",deleted:"Network removed",nonetworks:"No saved networks yet — join one above.",
+  copy:"Copy",copied:"Copied",sec_settings:"Settings",set_language:"Language",set_nodeid:"Node ID",set_version:"Version",
+  set_crypto:"Encryption",set_note:"The web console is local to this device. Only this node can change its settings; network authorization is handled by the controller administrator.",
+  members_note:"Direct links are established automatically over IPv6; other members use the server relay.",
   statuserr:"Status unavailable: ",footer:"IPv6 UNDERLAY · VIRTUAL IPv4"
  },
  zh:{
-  nav_overview:"概览",nav_net:"网络",nav_members:"成员",nav_settings:"设置",crumb:"网络",
+  nav_overview:"概览",nav_net:"网络",nav_members:"成员",nav_settings:"设置",crumb_networks:"网络",crumb_members:"成员",crumb_settings:"设置",crumb_overview:"概览",
   live:"在线",sec_net:"网络",managed:"已托管",f_netid:"网络 ID",f_subnet:"IPv4 网段",f_addr:"本机地址",f_ipv6:"底层 IPv6",f_discovery:"局域网发现",f_server:"控制器",
-  sec_members:"成员",th_name:"名称",th_id:"ID",th_ip:"IP",th_state:"状态",th_ep:"物理地址",th_path:"路径",th_io:"收发",
-  th_rtt:"延迟",th_seen:"最后活动",online:"在线",offline:"离线",ago:"前",never:"从未",routes:"受管路由",
+  sec_members:"成员",th_name:"名称",th_id:"ID",th_ip:"IP",th_state:"状态",th_path:"路径",th_io:"收发",th_rtt:"延迟",th_seen:"最后活动",
+  online:"在线",offline:"离线",ago:"前",never:"从未",routes:"受管路由",
   auth_wait:"该成员正在等待授权。请联系网络管理员批准你的节点 ID。",
   sec_ops:"操作",connect:"按 ID 添加成员",connect_hint:"手动介绍其他节点。同一网络中的成员通常会自动加入。",
   cidph:"节点 ID",btn_connect:"连接",connect_note:"由你的 X25519 身份认证",
   sendtitle:"诊断 · ICMP 回显",send_hint:"向覆盖网络注入原始 IPv4 报文并路由到指定成员。",
   dstph:"目标 IP",txtph:"载荷",btn_send:"发送",send_note:"端到端 AES-256-GCM 加密",
   nopeers:"暂无成员",direct:"直连",relay:"中继",sent:"已发送",connsent:"连接请求已发送",
+  st_peers:"成员数",st_direct:"直连数",st_online:"当前在线",
+  sec_current:"当前网络",f_ctrladdr:"控制器地址",sec_join:"加入 / 新建网络",
+  join_hint:"输入控制器的 IPv6 地址。节点会保留身份和隧道，并立即重连到该网络。",
+  netnameph:"网络名称（默认 default）",netipph:"[2001:db8::1]:9000 或 fe80::1%eth0",btn_join:"加入 / 新建",
+  join_note:"不填端口时使用 9000。链路本地地址需要指定作用域，例如 fe80::1%wlan0。",
+  sec_saved:"已保存网络",loading:"加载中…",current:"当前",btn_switch:"切换",btn_delete:"删除",
+  joined:"已加入网络",switched:"已切换网络",deleted:"网络已删除",nonetworks:"暂无已保存网络，可在上方新增。",
+  copy:"复制",copied:"已复制",sec_settings:"设置",set_language:"语言",set_nodeid:"节点 ID",set_version:"版本",
+  set_crypto:"加密",set_note:"此控制台仅在本机可用。设置只影响本节点；网络授权由控制器管理员处理。",
+  members_note:"直连隧道会通过 IPv6 自动建立；其他成员通过服务器中继。",
   statuserr:"状态获取失败：",footer:"IPv6 底层 · 虚拟 IPv4"
  }
 };
@@ -214,19 +311,48 @@ function applyLang(){
  document.documentElement.lang=lang;
  document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
  document.querySelectorAll('[data-i18n-ph]').forEach(e=>e.placeholder=t(e.dataset.i18nPh));
- $('en').style.color=lang==='en'?'var(--blue)':'var(--dim)';
- $('zh').style.color=lang==='zh'?'var(--blue)':'var(--dim)';
+ for(const id of ['en','zh','set-en','set-zh']){const b=$(id);if(b)b.classList.toggle('on',(id.endsWith('en')?'en':'zh')===lang)}
+ const view=document.querySelector('nav button.on');if(view)$('crumbview').textContent=t('crumb_'+view.dataset.view);
  status();
 }
-$('en').onclick=()=>{lang='en';localStorage.setItem('dp-lang','en');applyLang()};
-$('zh').onclick=()=>{lang='zh';localStorage.setItem('dp-lang','zh');applyLang()};
+function setLang(l){lang=l;localStorage.setItem('dp-lang',l);applyLang()}
+for(const id of ['en','set-en'])$(id)&&($(id).onclick=()=>setLang('en'));
+for(const id of ['zh','set-zh'])$(id)&&($(id).onclick=()=>setLang('zh'));
 
+function showView(v){
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+ document.querySelectorAll('section[data-view]').forEach(s=>s.classList.toggle('on',s.dataset.view===v));
+ $('crumbview').textContent=t('crumb_'+v);
+ localStorage.setItem('dp-view',v);
+ if(v==='networks')loadNetworks();
+ window.scrollTo(0,0);
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+function copyText(text,btn){
+ const done=()=>{const old=btn.textContent;btn.textContent=t('copied');setTimeout(()=>btn.textContent=old,1400)};
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,()=>fallback())}
+ else fallback();
+ function fallback(){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(e){}ta.remove()}
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-copy]');if(!b)return;
+ const src=$(b.dataset.copy);if(src)copyText(src.textContent.trim(),b);
+});
+let ipv6Seq=0;
+function ipv6HTML(list){
+ if(!list||!list.length)return '—';
+ return list.map(a=>{
+  const id='ipv6-copy-'+(ipv6Seq++);
+  return '<div class="ip-row"><span>'+esc(a)+'</span><button class="copy" data-copy="'+id+'">'+t('copy')+'</button></div><span id="'+id+'" style="display:none">'+esc(a)+'</span>';
+ }).join('');
+}
 function seenText(ts){
- if(!ts) return t('never');
+ if(!ts)return t('never');
  const sec=Math.floor((Date.now()-new Date(ts).getTime())/1000);
- if(sec<5) return lang==='zh'?'刚刚':'just now';
- if(sec<60) return sec+'s '+t('ago');
- if(sec<3600) return Math.floor(sec/60)+'m '+t('ago');
+ if(sec<5)return lang==='zh'?'刚刚':'just now';
+ if(sec<60)return sec+'s '+t('ago');
+ if(sec<3600)return Math.floor(sec/60)+'m '+t('ago');
  return Math.floor(sec/3600)+'h '+t('ago');
 }
 async function status(){
@@ -235,26 +361,71 @@ async function status(){
   $('ip').textContent=s.ip||'—';
   $('netid').textContent=(s.network||'default').toUpperCase()+' / '+(s.prefix||'').split('/')[0];
   $('subnet').textContent=s.prefix||'—';$('srv').textContent=s.server||'—';
-  $('ipv6').innerHTML=(s.ipv6&&s.ipv6.length)?s.ipv6.map(function(a){return '<div>'+a+'</div>'}).join(''):'—';
+  $('ipv6').innerHTML=ipv6HTML(s.ipv6);
   $('discovery').textContent=s.lan_discovery?(lang==='zh'?'已开启 (ff02::1)':'ON (ff02::1)'):(lang==='zh'?'已关闭':'OFF');
   $('crumbnet').textContent=s.network||'default';
   $('sideid').textContent=(s.id||'').slice(0,16)||'—';
-  $('pcount').textContent=String((s.peers||[]).length||'');
-  $('authbanner').classList.toggle('show', s.authorized===false);
-  $('routes').innerHTML=(s.routes||[]).map(r=>`<span class="r">${r.cidr} <b>→ ${r.via.slice(0,8)}</b></span>`).join('');
-  if(!s.peers||!s.peers.length){$('peers').innerHTML='<tr><td class="empty" colspan="9">'+t('nopeers')+'</td></tr>'}
-  else{$('peers').innerHTML=s.peers.map(p=>`<tr>
-    <td class="nm">${p.name||'device'}<span class="sub">${p.endpoint||'—'}</span></td>
-    <td class="mono">${p.id.slice(0,16)}…</td>
-    <td class="mono">${p.ip||'—'}</td>
-    <td><span class="st ${p.online?'on':'off'}"><i></i>${t(p.online?'online':'offline')}</span></td>
-    <td><span class="path ${p.direct?'direct':'relay'}">${t(p.mode)}</span></td>
-    <td class="rtt">${p.rtt_ms>0?p.rtt_ms+' ms':'—'}</td>
-    <td class="num">${seenText(p.last_seen)}</td>
-    <td class="num">${p.tx} / ${p.rx}</td><td class="dots">···</td></tr>`).join('')}
+  const peers=s.peers||[];
+  $('pcount').textContent=String(peers.length||'');
+  $('st-peers').textContent=peers.length;
+  $('st-direct').textContent=peers.filter(p=>p.direct).length;
+  $('st-online').textContent=peers.filter(p=>p.online).length;
+  $('authbanner').classList.toggle('show',s.authorized===false);
+  $('routes').innerHTML=(s.routes||[]).map(r=>'<span class="r">'+r.cidr+' <b>→ '+r.via.slice(0,8)+'</b></span>').join('');
+  if(!peers.length){$('peers').innerHTML='<tr><td class="empty" colspan="8">'+t('nopeers')+'</td></tr>'}
+  else{$('peers').innerHTML=peers.map(p=>'<tr>'+
+    '<td class="nm">'+esc(p.name||'device')+'<span class="sub">'+esc(p.endpoint||'—')+'</span></td>'+
+    '<td class="mono">'+esc(p.id.slice(0,16))+'…</td>'+
+    '<td class="mono">'+esc(p.ip||'—')+'</td>'+
+    '<td><span class="st '+(p.online?'on':'off')+'"><i></i>'+t(p.online?'online':'offline')+'</span></td>'+
+    '<td><span class="path '+(p.direct?'direct':'relay')+'">'+t(p.mode)+'</span></td>'+
+    '<td class="rtt">'+(p.rtt_ms>0?p.rtt_ms+' ms':'—')+'</td>'+
+    '<td class="num">'+seenText(p.last_seen)+'</td>'+
+    '<td class="num">'+p.tx+' / '+p.rx+'</td></tr>').join('')}
+  $('cur-name').textContent=s.network||'default';
+  $('cur-server').textContent=s.server||'—';
+  $('cur-ipv6').innerHTML=ipv6HTML(s.ipv6);
+  $('set-id').textContent=s.id||'—';
+  $('set-ipv6').innerHTML=ipv6HTML(s.ipv6);
+  $('set-discovery').textContent=$('discovery').textContent;
  }catch(e){$('msg').textContent=t('statuserr')+e}
 }
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function netmsg(x,el){const target=el||$('netmsg');target.textContent=x;setTimeout(()=>{if(target.textContent===x)target.textContent=''},4200)}
 function msg(x){$('msg').textContent=x;setTimeout(()=>{if($('msg').textContent===x)$('msg').textContent=''},3800)}
+
+async function loadNetworks(){
+ try{
+  const d=await(await fetch('/api/networks')).json();
+  const list=d.networks||[];
+  $('netcount').textContent=String(list.length);
+  if(!list.length){$('network-list').innerHTML='<div class="empty">'+t('nonetworks')+'</div>';return}
+  $('network-list').innerHTML=list.map(n=>'<div class="net-item"><div class="info"><b>'+esc(n.name)+'</b>'+
+    '<span>'+esc(n.server)+' · '+esc(n.ipv6||'—')+'</span></div>'+
+    (n.current?'<span class="tag">'+t('current')+'</span>':'<button class="ghost" data-switch="'+esc(n.name)+'">'+t('btn_switch')+'</button>')+
+    (n.current?'':'<button class="ghost danger" data-delete="'+esc(n.name)+'">'+t('btn_delete')+'</button>')+'</div>').join('');
+ }catch(e){netmsg(t('statuserr')+e)}
+}
+$('network-list').addEventListener('click',async e=>{
+ const sw=e.target.closest('[data-switch]'),del=e.target.closest('[data-delete]');
+ if(sw){await postNet('switch',{name:sw.dataset.switch},t('switched'))}
+ if(del){await postNet('delete',{name:del.dataset.delete},t('deleted'))}
+});
+async function postNet(path,data,success){
+ const r=await fetch('/api/networks/'+path,{method:'POST',body:new URLSearchParams(data)});
+ if(!r.ok){netmsg(await r.text());return false}
+ netmsg(success);loadNetworks();status();return true;
+}
+$('btn-join').onclick=async()=>{
+ const name=$('net-name').value.trim(),ipv6=$('net-ipv6').value.trim();
+ if(!ipv6){netmsg(lang==='zh'?'请输入 IPv6 地址':'Enter an IPv6 address');return}
+ const body=new URLSearchParams({name:name||'default',ipv6});
+ const r=await fetch('/api/networks/join',{method:'POST',body});
+ if(!r.ok){netmsg(await r.text());return}
+ $('net-ipv6').value='';netmsg(t('joined')+' '+(name||'default'));loadNetworks();status();
+};
+$('net-ipv6').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-join').click()});
+
 $('cid').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doConnect()}});
 function doConnect(){const id=$('cid').value.trim();if(!id)return;fetch('/api/connect',{method:'POST',body:new URLSearchParams({id})}).then(r=>msg(r.ok?t('connsent'):'error'))}
 document.querySelector('#cid').closest('.card').querySelector('button').onclick=doConnect;
@@ -274,7 +445,9 @@ document.querySelector('#dst').closest('.card').querySelector('button').onclick=
  const r=await fetch('/api/send',{method:'POST',body:new URLSearchParams({hex})});
  msg(r.ok?t('sent'):await r.text());
 }catch(err){msg('error: '+err.message)}};
-applyLang();setInterval(status,2000);
+applyLang();
+showView(localStorage.getItem('dp-view')||'overview');
+setInterval(status,2000);
 </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 
 [![Go Build & Test](https://github.com/GPUInAntarctica/DevicePort/actions/workflows/ci.yml/badge.svg)](https://github.com/GPUInAntarctica/DevicePort/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.1.6-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.6.5-blue.svg)](CHANGELOG.md)
 
 **English** · [中文](#deviceport-1)
 
@@ -12,7 +12,7 @@ networks join one overlay and receive a virtual **IPv4** address (`10.66.x.y`). 
 A ZeroTier-style bilingual (EN/中文) console, an Electron desktop shell and an Android VPN
 app are included.
 
-> Status: **v0.1.6** — functional prototype, not audited for production use.
+> Status: **1.2.6.5** — functional prototype, not audited for production use.
 
 ## Download ready-to-run binaries
 
@@ -24,7 +24,7 @@ No build toolchain needed — grab the assets from the
 | Linux x86-64 (AppImage) | `dist/DevicePort-x86_64.AppImage` | `chmod +x ... && ./DevicePort-x86_64.AppImage` — opens a terminal menu |
 | Linux x86-64 (bare binary) | `dist/deviceport-linux-amd64` | `chmod +x deviceport-linux-amd64` then run from a terminal |
 | Windows x86-64 | `dist/deviceport-windows-amd64.exe` | double-click opens the control panel in a browser; or run from PowerShell |
-| Android | `dist/DevicePort-v0.1.6.apk` | install on device/emulator |
+| Android | `dist/DevicePort-1.2.6.5.apk` | install on device/emulator |
 
 The Linux and Windows files are a **single executable** containing both roles:
 
@@ -117,7 +117,7 @@ DevicePort 通过 **IPv6 底层网络**构建虚拟局域网，为不同物理�
 流量端到端加密，通过 UDP 打洞直连，失败时自动中继。包含 ZeroTier 风格的中英双语控制台、
 Electron 桌面端和 Android VPN 应用。
 
-> 当前版本：**v0.1.6** — 功能原型，尚未经过生产安全审计。
+> 当前版本：**1.2.6.5** — 功能原型，尚未经过生产安全审计。
 
 ### 直接下载
 
@@ -128,7 +128,7 @@ Electron 桌面端和 Android VPN 应用。
 | Linux x86-64（推荐） | `dist/DevicePort-x86_64.AppImage`（先运行安装脚本，再双击打开浏览器控制面板） |
 | Linux x86-64 | `dist/deviceport-linux-amd64`（命令行） |
 | Windows x86-64 | `dist/deviceport-windows-amd64.exe`（双击打开浏览器控制面板） |
-| Android | `dist/DevicePort-v0.1.6.apk` |
+| Android | `dist/DevicePort-1.2.6.5.apk` |
 
 Linux/Windows 是**单文件可执行文件**，包含两个子命令：
 

@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.6.5
+
+- Web console: all four sidebar items (Overview / Networks / Members / Settings) are now real, clickable pages with an active state and a remembered selection.
+- Networks page: join or create a network by entering an IPv6 controller address (`[2001:db8::1]:9000`, `fe80::1%wlan0`, ...). The node keeps its identity and TUN device and reconnects immediately; saved networks can be switched back to or removed.
+- IPv6 addresses are listed with one-click copy buttons, and the console shows member/direct/online counters and clearer empty states.
+- Version updated to 1.2.6.5.
+
 ## v0.1.6
 
 - Android no longer hardcodes `10.66.0.2`: it probes the server-assigned IP with a temporary userspace engine, then establishes `VpnService` with the real address and route. Fixes IP conflicts when the Android node is not the first member.

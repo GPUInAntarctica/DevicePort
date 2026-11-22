@@ -1,4 +1,4 @@
-# Wire protocol (v2, DevicePort v0.1.6)
+# Wire protocol (v2, DevicePort 1.2.6.5)
 
 Two independent formats are used.
 
